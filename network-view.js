@@ -23,7 +23,7 @@ export function networkView(plan,{selected='',onSelect=()=>{}}={}) {
     b.title=`${branch.entry.stop.name} · ${branch.entry.stop.number}`;b.setAttribute('aria-label',`${branch.kind==='origin'?'출발':'도착'} ${branch.entry.stop.name} ${branch.entry.stop.number} 구간 선택`);
     b.innerHTML=`<span>${escape(branch.entry.stop.name)}</span><small>${numbers.length>2?escape(numbers[0])+' 외 '+(numbers.length-1)+'개':numbers.length?numbers.map(escape).join(' · '):'노선 선택'}</small>`;b.onclick=()=>onSelect(branch.kind,branch.index);box.append(b);
   }
-  const hub=document.createElement('button');hub.type='button';hub.className='network-node hub';hub.style.left='50%';hub.style.top='50%';hub.innerHTML=`<small>환승지</small><span>${escape(plan.transfer?.name||'환승지 지정')}</span>`;hub.onclick=()=>onSelect('transfer',0);box.append(hub);
+  const hub=document.createElement('button');hub.type='button';hub.className='network-node hub';hub.style.left='50%';hub.style.top='50%';hub.innerHTML=`<small>환승지</small><span>${escape(plan.transfer?.name||'환승지 지정')}</span>${plan.transfer?.number?`<small class="hub-stop-id">${escape(plan.transfer.number)}</small>`:''}`;hub.setAttribute('aria-label',plan.transfer?`환승지 ${plan.transfer.name} ${plan.transfer.number}`:'환승지 지정');hub.onclick=()=>onSelect('transfer',0);box.append(hub);
   for(const [kind,count,label,x]of [['origin',plan.origins.length,'출발지 추가',95],['destination',plan.destinations.length,'도착지 추가',505]])if(!count){const b=document.createElement('button');b.type='button';b.className='network-node empty';b.style.left=x/6+'%';b.style.top='50%';b.textContent='+ '+label;b.onclick=()=>onSelect('add-'+kind,0);box.append(b);}
   return box;
 }
