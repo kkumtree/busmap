@@ -92,6 +92,8 @@ GitHub Settings → Pages → Source를 GitHub Actions로 선택하고 main에 p
 
 ## GitHub Pages 운영
 
-예정 주소: <https://kkumtree.github.io/busmap/>. `main`에 push하면 `Deploy GitHub Pages`가 테스트 → 공개 정적 파일 패키징 → 배포를 실행합니다. GitHub 설정의 **Pages → Source는 GitHub Actions**로 둡니다. 배포에 API 키나 Actions Secrets는 필요하지 않으며, 방문자가 페이지에서 자신의 키를 입력합니다.
+배포 주소: <https://kkumtree.github.io/busmap/>. GitHub Pages의 Source는 GitHub Actions로 설정되어 있습니다. `main`에 push하면 `Deploy GitHub Pages`가 테스트 → 공개 정적 파일 패키징 → 배포를 실행합니다. GitHub 설정의 **Pages → Source는 GitHub Actions**로 둡니다. 배포에 API 키나 Actions Secrets는 필요하지 않으며, 방문자가 페이지에서 자신의 키를 입력합니다.
 
 Pages 산출물은 공개 파일 목록만 복사합니다. `.env`, 진단 스크립트, 원본 수집 이력, 테스트와 node_modules는 배포하지 않습니다. 로컬 저장과 IndexedDB는 사이트 주소별로 분리되므로 localhost에서 저장한 경로가 GitHub Pages 주소로 자동 이동하지는 않습니다.
+
+2026-11-01 최초 배포 성공: [Deploy GitHub Pages 실행 기록](https://github.com/kkumtree/busmap/actions/runs/41304744468). 테스트 23개와 배포 주소의 HTML·JS·지도 자료 응답, `.env` 비공개(404)를 확인했습니다.
