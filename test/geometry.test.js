@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseShape,clipShape,getShapeOnQuery,cleanLine} from '../route-geometry.js';
+import {parseShape,clipShape,getShapeOnQuery,cleanLine,geometryState} from '../route-geometry.js';
 import {networkLayout} from '../network-view.js';
 import {writePlan,readPlans} from '../plan-model.js';
 const rows=[127.10,127.11,127.12,127.13].map((x,i)=>({linkId:'a',vtxSeq:String(i),vtxx:String(x),vtxy:'35.83'}));
@@ -35,4 +35,14 @@ test('saved sections survive local restore without fetching shapes',()=>{
 test('hub layout stays left/center/right, deterministic for multiple stops',()=>{
   const p={origins:[{},{}],destinations:[{},{}]};const a=networkLayout(p);assert.deepEqual(a,networkLayout(p));assert.equal(a.branches.length,4);
   assert.ok(a.branches.filter(x=>x.kind==='origin').every(x=>x.x<300));assert.ok(a.branches.filter(x=>x.kind==='destination').every(x=>x.x>300));
+});
+
+test('legacy missing geometry is not reported as an API error, and new failures retain their reason',()=>{
+  assert.match(geometryState({geometryStatus:'missing'}).label,/원인 미기록/);
+  const state=geometryState({geometryStatus:'request-error',geometryMessage:'서비스 연결실패 에러'});
+  assert.equal(state.label,'선형 조회 실패');assert.equal(state.detail,'서비스 연결실패 에러');
+  const storage={value:null,getItem(){return this.value;},setItem(k,v){this.value=v;}};
+  const r={number:'74',selected:true,geometryStatus:'request-error',geometryMessage:'서비스 연결실패 에러'};
+  writePlan(storage,{id:'failure',name:'확인',transfer:to,origins:[{stop:from,routes:[r]}],destinations:[{stop:{...from,number:'c'},routes:[{...r,number:'75'}]}]});
+  assert.equal(readPlans(storage)[0].origins[0].routes[0].geometryMessage,'서비스 연결실패 에러');
 });

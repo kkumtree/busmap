@@ -97,3 +97,5 @@ GitHub Settings → Pages → Source를 GitHub Actions로 선택하고 main에 p
 Pages 산출물은 공개 파일 목록만 복사합니다. `.env`, 진단 스크립트, 원본 수집 이력, 테스트와 node_modules는 배포하지 않습니다. 로컬 저장과 IndexedDB는 사이트 주소별로 분리되므로 localhost에서 저장한 경로가 GitHub Pages 주소로 자동 이동하지는 않습니다.
 
 2026-11-01 최초 배포 성공: [Deploy GitHub Pages 실행 기록](https://github.com/kkumtree/busmap/actions/runs/41304744468). 테스트 23개와 배포 주소의 HTML·JS·지도 자료 응답, `.env` 비공개(404)를 확인했습니다.
+
+선형이 없을 때는 노선별로 미조회, 요청 실패(제공기관 오류 문구), 응답 없음, 좌표계 확인 필요, 구간 연결 미확정, 정류장 순서 미확인을 구분합니다. 오류 사유는 경로 묶음과 함께 저장합니다. 이전 버전의 미확보 기록에는 원인이 없을 수 있으므로 실제 API 오류로 단정하지 않고 ‘원인 미기록’으로 표시합니다. 상태 표시·경로 펼치기 자체는 추가 API를 호출하지 않습니다.

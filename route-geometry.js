@@ -6,6 +6,19 @@ export function cleanLine(line) {
   if(line?.type!=='LineString'||!Array.isArray(line.coordinates)||line.coordinates.length<2||line.coordinates.length>20000||!line.coordinates.every(valid))return null;
   return {type:'LineString',coordinates:line.coordinates.map(p=>p.map(n=>Math.round(n*1e7)/1e7))};
 }
+export function geometryState(route) {
+  if(route.segment)return {label:'선형 확보',detail:''};
+  const states={
+    'not-requested':{label:'선형 미조회',detail:'아직 이 노선의 형상을 요청하지 않았습니다.'},
+    'request-error':{label:'선형 조회 실패',detail:route.geometryMessage||'요청에 실패했습니다. 자동 재시도하지 않습니다.'},
+    unsupported:{label:'형식 확인 필요',detail:route.geometryMessage||'형상 좌표계를 확인하지 못해 표시를 보류했습니다.'},
+    ambiguous:{label:'구간 연결 미확정',detail:route.geometryMessage||'승차·하차 구간을 유일하게 연결하지 못했습니다.'},
+    unverified:{label:'정류장 순서 미확인',detail:route.geometryMessage||'경유 정류장 순서를 확인해야 구간을 표시할 수 있습니다.'},
+  };
+  if(states[route.geometryStatus])return states[route.geometryStatus];
+  if(route.geometryMessage)return {label:'선형 응답 없음',detail:route.geometryMessage};
+  return {label:'선형 미확보 · 원인 미기록',detail:'기존 저장 정보에 미확보 사유가 남아 있지 않습니다. API 오류인지 미조회 상태인지 단정할 수 없습니다.'};
+}
 export function parseShape(rows) {
   const groups=[];
   for(const row of rows){const p=[Number(f(row,'vtxx')),Number(f(row,'vtxy'))];if(!valid(p))return {status:'unsupported',parts:[],message:'좌표계를 확인할 수 없어 선을 표시하지 않습니다.'};

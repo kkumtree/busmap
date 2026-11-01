@@ -4,7 +4,7 @@ import {queryDirectLeg,fetchStopSpec,resolveStopIdentity} from './targeted.js';
 import {readJourneys} from './journey.js';
 import {networkView} from './network-view.js';
 import {shapeStore} from './shape-cache.js';
-import {getShapeOnQuery,clipShape} from './route-geometry.js';
+import {getShapeOnQuery,clipShape,geometryState} from './route-geometry.js';
 import {PLANS_KEY,emptyPlan,cleanPoint,cleanRoute,normalizePlan,pointKey,validatePlan,readPlans,writePlan,arrivalTargets,stopHint} from './plan-model.js';
 
 const $=id=>document.getElementById(id);
@@ -116,10 +116,10 @@ function renderPlan(){
 }
 function renderConnection(kind,entry,group){
   const box=$('connection-detail'),card=stopCard(entry.stop);card.classList.add('edge-card');
-  const h=document.createElement('h3');h.className='edge-title';h.textContent=kind==='origin'?'출발지 → 환승지':'환승지 → 도착지';card.prepend(h);
+  const h=document.createElement('h3');h.className='edge-title';h.textContent=kind==='origin'?`1구간 · ${entry.stop.number} → ${plan.transfer.number}`:`2구간 · ${plan.transfer.number} → ${entry.stop.number}`;card.prepend(h);
   const remove=document.createElement('button');remove.className='quiet remove-stop';remove.textContent='×';remove.setAttribute('aria-label',`${entry.stop.name} ${entry.stop.number} 삭제`);remove.onclick=()=>{edit();group.splice(group.indexOf(entry),1);renderPlan();showPoints();};card.append(remove);
   const routeBox=document.createElement('div');routeBox.className='route-choices';
-  for(const route of entry.routes){const label=document.createElement('label');label.className='route-check';label.innerHTML=`<input type="checkbox" ${route.selected?'checked':''}><span><b>${esc(route.number)}번</b>${route.destination?'<small>'+esc(route.destination)+'</small>':''}<small>${route.verified?'경유 확인':'경유 확인 전'} · ${route.segment?'선형 저장됨':'선형 미확보'}</small></span>`;label.querySelector('input').onchange=e=>{route.selected=e.target.checked;renderPlan();showEdgeLines(plan,kind,entry);};routeBox.append(label);}
+  for(const route of entry.routes){const label=document.createElement('label');label.className='route-check';label.innerHTML=`<input type="checkbox" ${route.selected?'checked':''}><span><b>${esc(route.number)}번</b>${route.destination?'<small>'+esc(route.destination)+'</small>':''}<small>${route.verified?'경유 확인':'경유 확인 전'} · ${esc(geometryState(route).label)}</small>${geometryState(route).detail?'<small class="geometry-reason">'+esc(geometryState(route).detail)+'</small>':''}</span>`;label.querySelector('input').onchange=e=>{route.selected=e.target.checked;renderPlan();showEdgeLines(plan,kind,entry);};routeBox.append(label);}
   card.append(routeBox);const tools=document.createElement('div');tools.className='edge-tools';const query=document.createElement('button');query.textContent=pending.has(entry)?'조회 중…':'후보 노선 조회';query.disabled=!plan.transfer||pending.has(entry);query.onclick=()=>queryEdge(kind,entry);tools.append(query);card.append(tools);
   const note=document.createElement('p');note.className=entry.error?'error':'small-note';note.textContent=entry.error||entry.note||'이 버튼을 누를 때만 후보 노선과 형상을 조회합니다. 저장된 형상은 재사용합니다.';card.append(note);box.append(card);
 }
@@ -135,7 +135,7 @@ async function showEdgeLines(p,kind,entry,fit=false){
   }
   routeFeatures={type:'FeatureCollection',features};map?.getSource('route-sections')?.setData(routeFeatures);
   if(fit){if(features.length&&map){const bounds=new ML.LngLatBounds();for(const feature of features)for(const p of feature.geometry.coordinates)bounds.extend(p);map.fitBounds(bounds,{padding:{top:100,left:Math.min(480,innerWidth*.45),right:90,bottom:60},maxZoom:15.5});}else focusStop(entry.stop);}
-  $('map-line-status').hidden=false;$('map-line-status').textContent=features.length?`선택 구간 ${features.length}개 노선 · 저장된 선형${missing?' · 미확보 '+missing+'개':''}`:'이 구간의 저장된 선형이 없습니다. 임의의 연결선은 표시하지 않습니다.';
+  $('map-line-status').hidden=false;$('map-line-status').textContent=features.length?`선택 구간 ${features.length}개 노선 · 저장된 선형${missing?' · 미확보 '+missing+'개':''}`:entry.routes.filter(r=>r.selected).map(r=>`${r.number}번: ${geometryState(r).label}`).join(' / ')||'표시할 노선을 선택하세요.';
 }
 for(const [id,layer]of [['show-dong','legal-dong-names'],['show-apartments','apartment-names']])$(id).onchange=e=>{if(map?.getLayer(layer))map.setLayoutProperty(layer,'visibility',e.target.checked?'visible':'none');};
 
@@ -144,13 +144,14 @@ async function queryEdge(kind,entry){
   const token=version;pending.add(entry);entry.error='';renderPlan();
   try{const from=kind==='origin'?entry.stop:plan.transfer,to=kind==='origin'?plan.transfer:entry.stop;await hydrate(from);await hydrate(to);if(token!==version)return;
     const result=await queryDirectLeg(client,from,to,{ids,entries,getSpec,allowedNumbers:({'30887:30920':['61'],'30927:30920':['200'],'30920:36347':['101'],'30920:36351':['74','75']})[`${from.number}:${to.number}`],check:()=>{if(token!==version)throw new DOMException('변경','AbortError');}});if(token!==version)return;
-    for(const r of result.routes){const old=entry.routes.find(x=>x.routeId===r.routeId||(!x.routeId&&x.number===r.number));const checked=old?old.selected:false;const route=cleanRoute({...r,verified:true,selected:checked});if(old)Object.assign(old,route);else entry.routes.push(route);}
+    for(const r of result.routes){const old=entry.routes.find(x=>x.routeId===r.routeId||(!x.routeId&&x.number===r.number));const checked=old?old.selected:false;const route=cleanRoute({...old,...r,geometryStatus:old?.geometryStatus||'not-requested',verified:true,selected:checked});if(old)Object.assign(old,route);else entry.routes.push(route);}
     if(result.routes[0]){from.standardId=result.routes[0].fromStandardId;to.standardId=result.routes[0].toStandardId;}
     let geometryFailures=0;
     for(const r of entry.routes.filter(r=>result.routes.some(x=>x.routeId===r.routeId))){
+      if(token!==version)return;
       if(r.segment)continue;
-      try{const shape=await getShapeOnQuery(client,shapes,r.routeId);if(token!==version)return;const section=clipShape(shape,from,to,r);r.shapeKey=r.routeId;r.segment=section.segment;r.geometryStatus=section.status;if(!r.segment)geometryFailures++;}
-      catch{r.geometryStatus='missing';geometryFailures++;}
+      try{const shape=await getShapeOnQuery(client,shapes,r.routeId);if(token!==version)return;const section=clipShape(shape,from,to,r);r.shapeKey=r.routeId;r.segment=section.segment;r.geometryStatus=section.status;r.geometryMessage=section.message||'';if(!r.segment)geometryFailures++;}
+      catch(error){if(token!==version||error.name==='AbortError')return;r.geometryStatus='request-error';r.geometryMessage=error.message;geometryFailures++;}
     }
     entry.note=`후보 ${result.examined}개 확인 · 저장된 형상은 재사용합니다.${geometryFailures?' 선형 미확보 '+geometryFailures+'개.':''}`;
     showEdgeLines(plan,kind,entry);
