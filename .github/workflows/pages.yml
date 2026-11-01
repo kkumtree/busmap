@@ -29,6 +29,7 @@ jobs:
           mkdir _site/data
           cp data/focus-plan.json data/apartment-labels.geojson data/dong-labels.geojson _site/data/
           cp -r vendor _site/
+          node scripts/stamp-assets.mjs _site "$GITHUB_SHA"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
