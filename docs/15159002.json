@@ -1,0 +1,1529 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "전주시 버스 운행과 관련하여 시민들이 보다 스마트하게 대중교통을 이용할 수 있도록 실시간 버스 위치 정보 및 정류장별 버스 도착 예정 정보를 제공합니다. 특정 노선을 선택하면 해당 노선에서 현재 운행 중인 버스의 실시간 위치와 접근 중인 버스 정보를 확인할 수 있으며, 정류장을 기준으로 조회할 경우 해당 정류장에 곧 도착할 버스 목록과 예상 도착 시간을 한눈에 파악할 수 있습니다. 이를 통해 불필요한 대기 시간을 줄이고 보다 효율적인 이동 계획을 수립할 수 있으며, 전주 시내 어디서든 실시간으로 버스 운행 현황을 손쉽게 조회하여 편리한 대중교통 이용 환경을 경험할 수 있습니다.",
+    "version": "1.0.0",
+    "title": "전북특별자치도 전주시_실시간 운행정보 서비스_GW"
+  },
+  "host": "apis.data.go.kr/4641000/realtime",
+  "basePath": "",
+  "schemes": [
+    "https",
+    "http"
+  ],
+  "paths": {
+    "/bus_location_bus_position_common": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "성공",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "description": "결과코드",
+                  "properties": {}
+                },
+                "msg": {
+                  "type": "string",
+                  "description": "결과메세지",
+                  "properties": {}
+                },
+                "routeList": {
+                  "type": "object",
+                  "description": "routeList ",
+                  "properties": {
+                    "list": {
+                      "type": "object",
+                      "description": "list ",
+                      "properties": {
+                        "brtStdid": {
+                          "type": "string",
+                          "description": "노선 ID",
+                          "properties": {}
+                        },
+                        "brsSeqno": {
+                          "type": "string",
+                          "description": "정류장순번",
+                          "properties": {}
+                        },
+                        "bnodeId": {
+                          "type": "string",
+                          "description": "지점ID",
+                          "properties": {}
+                        },
+                        "stopKname": {
+                          "type": "string",
+                          "description": "정류장 한글명칭",
+                          "properties": {}
+                        },
+                        "stopId": {
+                          "type": "string",
+                          "description": "정류장서비스ID",
+                          "properties": {}
+                        },
+                        "stopStandardid": {
+                          "type": "string",
+                          "description": "정류장표준ID",
+                          "properties": {}
+                        },
+                        "reMark": {
+                          "type": "string",
+                          "description": "비고",
+                          "properties": {}
+                        },
+                        "brnSeqno": {
+                          "type": "string",
+                          "description": "지점순번",
+                          "properties": {}
+                        },
+                        "brtSubid": {
+                          "type": "string",
+                          "description": "분선ID",
+                          "properties": {}
+                        },
+                        "busLow": {
+                          "type": "string",
+                          "description": "저상유무(1:저상)",
+                          "properties": {}
+                        },
+                        "BNo": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "SKey": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "busNo": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "brtId": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "LKey": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "brtClass": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "xml": {
+                "name": "response"
+              }
+            }
+          },
+          "001": {
+            "description": "요청항목 필수 누락 에러 및 기타 시스템 에러"
+          }
+        },
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "노선별 버스위치정보 조회",
+        "description": "특정 노선번호 입력시 현재 노선번호를 단 버스의 위치 조회할수 있는 기능",
+        "operationId": "bus_location_bus_position_common",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/xml"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "serviceKey",
+          "description": "공공데이터포털에서 받은 인증키",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "brtStdid",
+          "description": "노선식별ID",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "lKey",
+          "description": "저상버스일경우 (LOW)",
+          "type": "string",
+          "required": false,
+          "in": "query"
+        }
+      ]
+    },
+    "/low_bus_stop_real_location_common": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "성공",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "description": "결과코드 ",
+                  "properties": {}
+                },
+                "msg": {
+                  "type": "string",
+                  "description": "결과메세지 ",
+                  "properties": {}
+                },
+                "routeList": {
+                  "type": "object",
+                  "description": "routeList ",
+                  "properties": {
+                    "list": {
+                      "type": "object",
+                      "description": "list",
+                      "properties": {
+                        "brtStdid": {
+                          "type": "string",
+                          "description": "노선ID",
+                          "properties": {}
+                        },
+                        "bidNo": {
+                          "type": "string",
+                          "description": "버스번호",
+                          "properties": {}
+                        },
+                        "RStop": {
+                          "type": "string",
+                          "description": "남은 정류장수",
+                          "properties": {}
+                        },
+                        "RTime": {
+                          "type": "string",
+                          "description": "도착예정시간(초단위)",
+                          "properties": {}
+                        },
+                        "viaStopname": {
+                          "type": "string",
+                          "description": "최근 통과지점",
+                          "properties": {}
+                        },
+                        "brtId": {
+                          "type": "string",
+                          "description": "노선번호",
+                          "properties": {}
+                        },
+                        "brtClass": {
+                          "type": "string",
+                          "description": "노선확장",
+                          "properties": {}
+                        },
+                        "brtVianame": {
+                          "type": "string",
+                          "description": "방면명",
+                          "properties": {}
+                        },
+                        "brtDirection": {
+                          "type": "string",
+                          "description": "노선방향",
+                          "properties": {}
+                        },
+                        "busLow": {
+                          "type": "string",
+                          "description": "저상버스:1",
+                          "properties": {}
+                        },
+                        "LKey": {
+                          "type": "string",
+                          "description": "검색어:저상버스일경우(LOW)",
+                          "properties": {}
+                        },
+                        "initBrtClass": {
+                          "type": "string",
+                          "description": "검색어:노선번호",
+                          "properties": {}
+                        },
+                        "initBrtid": {
+                          "type": "string",
+                          "description": "검색어:확장번호",
+                          "properties": {}
+                        },
+                        "orderBy": {
+                          "type": "string",
+                          "description": "정렬항목명",
+                          "properties": {}
+                        },
+                        "range": {
+                          "type": "string",
+                          "description": "정렬순서(desc,asc)",
+                          "properties": {}
+                        },
+                        "stopStdid": {
+                          "type": "string",
+                          "description": "검색어:정류장 ID",
+                          "properties": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "xml": {
+                "name": "response"
+              }
+            }
+          },
+          "001": {
+            "description": "요청항목 필수 누락 에러 및 기타 시스템 에러"
+          }
+        },
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "노선별 특정정류소 접근버스 위치정보 조회",
+        "description": "특정 노선의 특정 정류장 접근 버스 도착 정보 조회할수 있는 기능",
+        "operationId": "low_bus_stop_real_location_common",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/xml"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "serviceKey",
+          "description": "공공데이터포털에서 받은 인증키",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "stopStdid",
+          "description": "정류장 ID",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "lKey",
+          "description": "저상버스일경우(LOW)",
+          "type": "string",
+          "required": false,
+          "in": "query"
+        },
+        {
+          "name": "initBrtid",
+          "description": "노선번호",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "initBrtClass",
+          "description": "확장번호",
+          "type": "string",
+          "required": false,
+          "in": "query"
+        }
+      ]
+    },
+    "/bus_location_low_bus_position_common": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "성공",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "description": "결과코드",
+                  "properties": {}
+                },
+                "msg": {
+                  "type": "string",
+                  "description": "결과메세지",
+                  "properties": {}
+                },
+                "routeList": {
+                  "type": "object",
+                  "description": "routeList ",
+                  "properties": {
+                    "list": {
+                      "type": "object",
+                      "description": "list",
+                      "properties": {
+                        "BNo": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "LKey": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "SKey": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "bnodeId": {
+                          "type": "string",
+                          "description": "지점ID",
+                          "properties": {}
+                        },
+                        "brnSeqno": {
+                          "type": "string",
+                          "description": "지점순번",
+                          "properties": {}
+                        },
+                        "brsSeqno": {
+                          "type": "string",
+                          "description": "정류장순번",
+                          "properties": {}
+                        },
+                        "brtClass": {
+                          "type": "string",
+                          "description": "노선확장",
+                          "properties": {}
+                        },
+                        "brtId": {
+                          "type": "string",
+                          "description": "노선번호",
+                          "properties": {}
+                        },
+                        "brtStdid": {
+                          "type": "string",
+                          "description": "노선ID",
+                          "properties": {}
+                        },
+                        "brtSubid": {
+                          "type": "string",
+                          "description": "분선ID",
+                          "properties": {}
+                        },
+                        "busLow": {
+                          "type": "string",
+                          "description": "저상유무(1:저상)\\t",
+                          "properties": {}
+                        },
+                        "busNo": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "reMark": {
+                          "type": "string",
+                          "description": "비고",
+                          "properties": {}
+                        },
+                        "stopId": {
+                          "type": "string",
+                          "description": "정류장서비스ID",
+                          "properties": {}
+                        },
+                        "stopKname": {
+                          "type": "string",
+                          "description": "정류장 한글명칭",
+                          "properties": {}
+                        },
+                        "stopStandardid": {
+                          "type": "string",
+                          "description": "정류장표준ID",
+                          "properties": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "xml": {
+                "name": "response"
+              }
+            }
+          },
+          "001": {
+            "description": "요청항목 필수 누락 에러 및 기타 시스템 에러"
+          }
+        },
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "저상버스 위치정보 조회",
+        "description": "노선별 저상버스 위치정보를 조회할수 있는 기능",
+        "operationId": "bus_location_low_bus_position_common",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/xml"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "serviceKey",
+          "description": "공공데이터포털에서 받은 인증키",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "brtStdid",
+          "description": "노선ID",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        }
+      ]
+    },
+    "/bus_location_low_busstop_infomation_common": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "성공",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "description": "결과코드 ",
+                  "properties": {}
+                },
+                "msg": {
+                  "type": "string",
+                  "description": "결과메세지 ",
+                  "properties": {}
+                },
+                "routeList": {
+                  "type": "object",
+                  "description": "routeList ",
+                  "properties": {
+                    "list": {
+                      "type": "object",
+                      "description": "list",
+                      "properties": {
+                        "brtStdid": {
+                          "type": "string",
+                          "description": "노선ID",
+                          "properties": {}
+                        },
+                        "bidNo": {
+                          "type": "string",
+                          "description": "버스번호",
+                          "properties": {}
+                        },
+                        "RStop": {
+                          "type": "string",
+                          "description": "남은 정류장수",
+                          "properties": {}
+                        },
+                        "RTime": {
+                          "type": "string",
+                          "description": "도착예정시간(초단위)",
+                          "properties": {}
+                        },
+                        "viaStopname": {
+                          "type": "string",
+                          "description": "최근 통과지점",
+                          "properties": {}
+                        },
+                        "brtId": {
+                          "type": "string",
+                          "description": "노선번호",
+                          "properties": {}
+                        },
+                        "brtClass": {
+                          "type": "string",
+                          "description": "노선확장",
+                          "properties": {}
+                        },
+                        "brtVianame": {
+                          "type": "string",
+                          "description": "방면명",
+                          "properties": {}
+                        },
+                        "brtDirection": {
+                          "type": "string",
+                          "description": "노선방향",
+                          "properties": {}
+                        },
+                        "busLow": {
+                          "type": "string",
+                          "description": "저상버스:1",
+                          "properties": {}
+                        },
+                        "range": {
+                          "type": "string",
+                          "description": "정렬순서(DESC,ASC)",
+                          "properties": {}
+                        },
+                        "orderBy": {
+                          "type": "string",
+                          "description": "정렬항목",
+                          "properties": {}
+                        },
+                        "initBrtid": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "initBrtClass": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "LKey": {
+                          "type": "string",
+                          "description": "검색어:저상버스구",
+                          "properties": {}
+                        },
+                        "stopStdid": {
+                          "type": "string",
+                          "description": "검색어:정류장 ID",
+                          "properties": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "xml": {
+                "name": "response"
+              }
+            }
+          },
+          "001": {
+            "description": "요청항목 필수 누락 에러 및 기타 시스템 에러"
+          }
+        },
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "정류소별 버스 도착정보 목록 조회",
+        "description": "노선구분 없이 특정정류소로 접근하는 버스 위치정보 조회할수 있는 기능",
+        "operationId": "bus_location_low_busstop_infomation_common",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/xml"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "serviceKey",
+          "description": "공공데이터포털에서 받은 인증키",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "stopStdid",
+          "description": "정류장 ID",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "lKey",
+          "description": "저상버스인 경우(LOW)",
+          "type": "string",
+          "required": false,
+          "in": "query"
+        }
+      ]
+    },
+    "/bus_stop_real_location_common": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "성공",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "description": "결과코",
+                  "properties": {}
+                },
+                "msg": {
+                  "type": "string",
+                  "description": "결과메세지",
+                  "properties": {}
+                },
+                "routeList": {
+                  "type": "object",
+                  "description": "routeList ",
+                  "properties": {
+                    "list": {
+                      "type": "object",
+                      "description": "list",
+                      "properties": {
+                        "LKey": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "RStop": {
+                          "type": "string",
+                          "description": "남은 정류장수",
+                          "properties": {}
+                        },
+                        "RTime": {
+                          "type": "string",
+                          "description": "도착예정시간(초단위)",
+                          "properties": {}
+                        },
+                        "bidNo": {
+                          "type": "string",
+                          "description": "버스번호",
+                          "properties": {}
+                        },
+                        "brtClass": {
+                          "type": "string",
+                          "description": "노선확장",
+                          "properties": {}
+                        },
+                        "brtDirection": {
+                          "type": "string",
+                          "description": "노선방향",
+                          "properties": {}
+                        },
+                        "brtId": {
+                          "type": "string",
+                          "description": "노선번호",
+                          "properties": {}
+                        },
+                        "brtStdid": {
+                          "type": "string",
+                          "description": "노선ID",
+                          "properties": {}
+                        },
+                        "brtVianame": {
+                          "type": "string",
+                          "description": "방면명",
+                          "properties": {}
+                        },
+                        "busLow": {
+                          "type": "string",
+                          "description": "저상버스:1",
+                          "properties": {}
+                        },
+                        "initBrtClass": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "initBrtid": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "orderBy": {
+                          "type": "string",
+                          "description": "정렬항목",
+                          "properties": {}
+                        },
+                        "range": {
+                          "type": "string",
+                          "description": "정렬순",
+                          "properties": {}
+                        },
+                        "stopStdid": {
+                          "type": "string",
+                          "description": "정류장 ID",
+                          "properties": {}
+                        },
+                        "viaStopname": {
+                          "type": "string",
+                          "description": "최근 통과지점",
+                          "properties": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "xml": {
+                "name": "response"
+              }
+            }
+          },
+          "001": {
+            "description": "요청항목 필수 누락 에러 및 기타 시스템 에러"
+          }
+        },
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "저상버스 특정정류소 접근 버스위치정보 조회",
+        "description": "노선구분 없이 저상버스 특정정류소 접근 버스위치정보 조회",
+        "operationId": "bus_stop_real_location_common",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/xml"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "serviceKey",
+          "description": "공공데이터포털에서 받은 인증키",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "stopStdid",
+          "description": "정류장 ID",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "lKey",
+          "description": "저상버스구분(LOW값입력)",
+          "type": "string",
+          "required": false,
+          "in": "query"
+        },
+        {
+          "name": "initBrtid",
+          "description": "노선번호",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "initBrtClass",
+          "description": "확장번호(예 1)",
+          "type": "string",
+          "required": false,
+          "in": "query"
+        }
+      ]
+    },
+    "/bus_location_busstop_infomation_common": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "성공",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "description": "결과코",
+                  "properties": {}
+                },
+                "msg": {
+                  "type": "string",
+                  "description": "결과메세지",
+                  "properties": {}
+                },
+                "routeList": {
+                  "type": "object",
+                  "description": "routeList ",
+                  "properties": {
+                    "list": {
+                      "type": "object",
+                      "description": "list",
+                      "properties": {
+                        "LKey": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "RStop": {
+                          "type": "string",
+                          "description": "남은 정류장수",
+                          "properties": {}
+                        },
+                        "RTime": {
+                          "type": "string",
+                          "description": "도착예정시간(초단위)",
+                          "properties": {}
+                        },
+                        "bidNo": {
+                          "type": "string",
+                          "description": "버스번호",
+                          "properties": {}
+                        },
+                        "brtClass": {
+                          "type": "string",
+                          "description": "노선확장",
+                          "properties": {}
+                        },
+                        "brtDirection": {
+                          "type": "string",
+                          "description": "노선방향",
+                          "properties": {}
+                        },
+                        "brtId": {
+                          "type": "string",
+                          "description": "노선번호",
+                          "properties": {}
+                        },
+                        "brtStdid": {
+                          "type": "string",
+                          "description": "노선ID",
+                          "properties": {}
+                        },
+                        "brtVianame": {
+                          "type": "string",
+                          "description": "방면명",
+                          "properties": {}
+                        },
+                        "busLow": {
+                          "type": "string",
+                          "description": "저상버스:1",
+                          "properties": {}
+                        },
+                        "initBrtClass": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "initBrtid": {
+                          "type": "string",
+                          "description": "사용안함",
+                          "properties": {}
+                        },
+                        "orderBy": {
+                          "type": "string",
+                          "description": "정렬항목",
+                          "properties": {}
+                        },
+                        "range": {
+                          "type": "string",
+                          "description": "정렬순서",
+                          "properties": {}
+                        },
+                        "stopStdid": {
+                          "type": "string",
+                          "description": "정류장 ID",
+                          "properties": {}
+                        },
+                        "viaStopname": {
+                          "type": "string",
+                          "description": "최근 통과지점",
+                          "properties": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "xml": {
+                "name": "response"
+              }
+            }
+          },
+          "001": {
+            "description": "요청항목 필수 누락 에러 및 기타 시스템 에러"
+          }
+        },
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "정류소별 저상버스 도착정보 목록 조회",
+        "description": "노선구분 없이 정류소별 저상버스 도착정보 목록 조회",
+        "operationId": "bus_location_busstop_infomation_common",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/xml"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "serviceKey",
+          "description": "공공데이터포털에서 받은 인증키",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "stopStdid",
+          "description": "정류장 ID",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "lKey",
+          "description": "저상버스구분(LOW값입력)",
+          "type": "string",
+          "required": false,
+          "in": "query"
+        },
+        {
+          "name": "initBrtid",
+          "description": "노선번호",
+          "type": "string",
+          "required": true,
+          "in": "query"
+        },
+        {
+          "name": "initBrtClass",
+          "description": "확장번호(예 1)",
+          "type": "string",
+          "required": false,
+          "in": "query"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "bus_location_bus_position_common_response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "결과코드"
+        },
+        "msg": {
+          "type": "string",
+          "description": "결과메세지"
+        },
+        "routeList": {
+          "type": "object",
+          "description": "routeList ",
+          "properties": {
+            "list": {
+              "type": "object",
+              "description": "list ",
+              "properties": {
+                "brtStdid": {
+                  "type": "string",
+                  "description": "노선 ID"
+                },
+                "brsSeqno": {
+                  "type": "string",
+                  "description": "정류장순번"
+                },
+                "bnodeId": {
+                  "type": "string",
+                  "description": "지점ID"
+                },
+                "stopKname": {
+                  "type": "string",
+                  "description": "정류장 한글명칭"
+                },
+                "stopId": {
+                  "type": "string",
+                  "description": "정류장서비스ID"
+                },
+                "stopStandardid": {
+                  "type": "string",
+                  "description": "정류장표준ID"
+                },
+                "reMark": {
+                  "type": "string",
+                  "description": "비고"
+                },
+                "brnSeqno": {
+                  "type": "string",
+                  "description": "지점순번"
+                },
+                "brtSubid": {
+                  "type": "string",
+                  "description": "분선ID"
+                },
+                "busLow": {
+                  "type": "string",
+                  "description": "저상유무(1:저상)"
+                },
+                "BNo": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "SKey": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "busNo": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "brtId": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "LKey": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "brtClass": {
+                  "type": "string",
+                  "description": "사용안함"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "low_bus_stop_real_location_common_response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "결과코드 "
+        },
+        "msg": {
+          "type": "string",
+          "description": "결과메세지 "
+        },
+        "routeList": {
+          "type": "object",
+          "description": "routeList ",
+          "properties": {
+            "list": {
+              "type": "object",
+              "description": "list",
+              "properties": {
+                "brtStdid": {
+                  "type": "string",
+                  "description": "노선ID"
+                },
+                "bidNo": {
+                  "type": "string",
+                  "description": "버스번호"
+                },
+                "RStop": {
+                  "type": "string",
+                  "description": "남은 정류장수"
+                },
+                "RTime": {
+                  "type": "string",
+                  "description": "도착예정시간(초단위)"
+                },
+                "viaStopname": {
+                  "type": "string",
+                  "description": "최근 통과지점"
+                },
+                "brtId": {
+                  "type": "string",
+                  "description": "노선번호"
+                },
+                "brtClass": {
+                  "type": "string",
+                  "description": "노선확장"
+                },
+                "brtVianame": {
+                  "type": "string",
+                  "description": "방면명"
+                },
+                "brtDirection": {
+                  "type": "string",
+                  "description": "노선방향"
+                },
+                "busLow": {
+                  "type": "string",
+                  "description": "저상버스:1"
+                },
+                "LKey": {
+                  "type": "string",
+                  "description": "검색어:저상버스일경우(LOW)"
+                },
+                "initBrtClass": {
+                  "type": "string",
+                  "description": "검색어:노선번호"
+                },
+                "initBrtid": {
+                  "type": "string",
+                  "description": "검색어:확장번호"
+                },
+                "orderBy": {
+                  "type": "string",
+                  "description": "정렬항목명"
+                },
+                "range": {
+                  "type": "string",
+                  "description": "정렬순서(desc,asc)"
+                },
+                "stopStdid": {
+                  "type": "string",
+                  "description": "검색어:정류장 ID"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "bus_location_low_bus_position_common_response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "결과코드"
+        },
+        "msg": {
+          "type": "string",
+          "description": "결과메세지"
+        },
+        "routeList": {
+          "type": "object",
+          "description": "routeList ",
+          "properties": {
+            "list": {
+              "type": "object",
+              "description": "list",
+              "properties": {
+                "BNo": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "LKey": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "SKey": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "bnodeId": {
+                  "type": "string",
+                  "description": "지점ID"
+                },
+                "brnSeqno": {
+                  "type": "string",
+                  "description": "지점순번"
+                },
+                "brsSeqno": {
+                  "type": "string",
+                  "description": "정류장순번"
+                },
+                "brtClass": {
+                  "type": "string",
+                  "description": "노선확장"
+                },
+                "brtId": {
+                  "type": "string",
+                  "description": "노선번호"
+                },
+                "brtStdid": {
+                  "type": "string",
+                  "description": "노선ID"
+                },
+                "brtSubid": {
+                  "type": "string",
+                  "description": "분선ID"
+                },
+                "busLow": {
+                  "type": "string",
+                  "description": "저상유무(1:저상)\\t"
+                },
+                "busNo": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "reMark": {
+                  "type": "string",
+                  "description": "비고"
+                },
+                "stopId": {
+                  "type": "string",
+                  "description": "정류장서비스ID"
+                },
+                "stopKname": {
+                  "type": "string",
+                  "description": "정류장 한글명칭"
+                },
+                "stopStandardid": {
+                  "type": "string",
+                  "description": "정류장표준ID"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "bus_location_low_busstop_infomation_common_response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "결과코드 "
+        },
+        "msg": {
+          "type": "string",
+          "description": "결과메세지 "
+        },
+        "routeList": {
+          "type": "object",
+          "description": "routeList ",
+          "properties": {
+            "list": {
+              "type": "object",
+              "description": "list",
+              "properties": {
+                "brtStdid": {
+                  "type": "string",
+                  "description": "노선ID"
+                },
+                "bidNo": {
+                  "type": "string",
+                  "description": "버스번호"
+                },
+                "RStop": {
+                  "type": "string",
+                  "description": "남은 정류장수"
+                },
+                "RTime": {
+                  "type": "string",
+                  "description": "도착예정시간(초단위)"
+                },
+                "viaStopname": {
+                  "type": "string",
+                  "description": "최근 통과지점"
+                },
+                "brtId": {
+                  "type": "string",
+                  "description": "노선번호"
+                },
+                "brtClass": {
+                  "type": "string",
+                  "description": "노선확장"
+                },
+                "brtVianame": {
+                  "type": "string",
+                  "description": "방면명"
+                },
+                "brtDirection": {
+                  "type": "string",
+                  "description": "노선방향"
+                },
+                "busLow": {
+                  "type": "string",
+                  "description": "저상버스:1"
+                },
+                "range": {
+                  "type": "string",
+                  "description": "정렬순서(DESC,ASC)"
+                },
+                "orderBy": {
+                  "type": "string",
+                  "description": "정렬항목"
+                },
+                "initBrtid": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "initBrtClass": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "LKey": {
+                  "type": "string",
+                  "description": "검색어:저상버스구"
+                },
+                "stopStdid": {
+                  "type": "string",
+                  "description": "검색어:정류장 ID"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "bus_stop_real_location_common_response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "결과코"
+        },
+        "msg": {
+          "type": "string",
+          "description": "결과메세지"
+        },
+        "routeList": {
+          "type": "object",
+          "description": "routeList ",
+          "properties": {
+            "list": {
+              "type": "object",
+              "description": "list",
+              "properties": {
+                "LKey": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "RStop": {
+                  "type": "string",
+                  "description": "남은 정류장수"
+                },
+                "RTime": {
+                  "type": "string",
+                  "description": "도착예정시간(초단위)"
+                },
+                "bidNo": {
+                  "type": "string",
+                  "description": "버스번호"
+                },
+                "brtClass": {
+                  "type": "string",
+                  "description": "노선확장"
+                },
+                "brtDirection": {
+                  "type": "string",
+                  "description": "노선방향"
+                },
+                "brtId": {
+                  "type": "string",
+                  "description": "노선번호"
+                },
+                "brtStdid": {
+                  "type": "string",
+                  "description": "노선ID"
+                },
+                "brtVianame": {
+                  "type": "string",
+                  "description": "방면명"
+                },
+                "busLow": {
+                  "type": "string",
+                  "description": "저상버스:1"
+                },
+                "initBrtClass": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "initBrtid": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "orderBy": {
+                  "type": "string",
+                  "description": "정렬항목"
+                },
+                "range": {
+                  "type": "string",
+                  "description": "정렬순"
+                },
+                "stopStdid": {
+                  "type": "string",
+                  "description": "정류장 ID"
+                },
+                "viaStopname": {
+                  "type": "string",
+                  "description": "최근 통과지점"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "bus_location_busstop_infomation_common_response": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "결과코"
+        },
+        "msg": {
+          "type": "string",
+          "description": "결과메세지"
+        },
+        "routeList": {
+          "type": "object",
+          "description": "routeList ",
+          "properties": {
+            "list": {
+              "type": "object",
+              "description": "list",
+              "properties": {
+                "LKey": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "RStop": {
+                  "type": "string",
+                  "description": "남은 정류장수"
+                },
+                "RTime": {
+                  "type": "string",
+                  "description": "도착예정시간(초단위)"
+                },
+                "bidNo": {
+                  "type": "string",
+                  "description": "버스번호"
+                },
+                "brtClass": {
+                  "type": "string",
+                  "description": "노선확장"
+                },
+                "brtDirection": {
+                  "type": "string",
+                  "description": "노선방향"
+                },
+                "brtId": {
+                  "type": "string",
+                  "description": "노선번호"
+                },
+                "brtStdid": {
+                  "type": "string",
+                  "description": "노선ID"
+                },
+                "brtVianame": {
+                  "type": "string",
+                  "description": "방면명"
+                },
+                "busLow": {
+                  "type": "string",
+                  "description": "저상버스:1"
+                },
+                "initBrtClass": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "initBrtid": {
+                  "type": "string",
+                  "description": "사용안함"
+                },
+                "orderBy": {
+                  "type": "string",
+                  "description": "정렬항목"
+                },
+                "range": {
+                  "type": "string",
+                  "description": "정렬순서"
+                },
+                "stopStdid": {
+                  "type": "string",
+                  "description": "정류장 ID"
+                },
+                "viaStopname": {
+                  "type": "string",
+                  "description": "최근 통과지점"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

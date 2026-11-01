@@ -1,0 +1,522 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1",
+    "title": "전라북도 전주시_버스 정류장 현황",
+    "description": ""
+  },
+  "host": "api.odcloud.kr",
+  "basePath": "/api",
+  "schemes": [
+    "https",
+    "http"
+  ],
+  "securityDefinitions": {
+    "ApiKeyAuth": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "Authorization"
+    },
+    "ApiKeyAuth2": {
+      "type": "apiKey",
+      "in": "query",
+      "name": "serviceKey"
+    }
+  },
+  "paths": {
+    "/15080859/v1/uddi:3983db8f-c40d-4016-9ccf-ead2ebc861f2": {
+      "get": {
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "전라북도 전주시_버스 정류장 현황_20210426",
+        "operationId": "getuddi:3983db8f-c40d-4016-9ccf-ead2ebc861f2",
+        "description": "전라북도 전주시_버스 정류장 현황_20210426",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "page index",
+            "type": "integer",
+            "format": "int64",
+            "exclusiveMinimum": false,
+            "default": 1
+          },
+          {
+            "name": "perPage",
+            "in": "query",
+            "description": "page size",
+            "type": "integer",
+            "format": "int64",
+            "exclusiveMinimum": false,
+            "default": 10
+          },
+          {
+            "name": "returnType",
+            "in": "query",
+            "description": "응답의 데이터 타입을 선택할 수 있습니다. (기본값: JSON)<br/>XML형태의 응답결과를 얻기 위해서는 XML 값으로 설정",
+            "type": "string",
+            "exclusiveMinimum": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공적으로 수행 됨",
+            "schema": {
+              "$ref": "#/definitions/uddi:3983db8f-c40d-4016-9ccf-ead2ebc861f2_api"
+            }
+          },
+          "401": {
+            "description": "인증 정보가 정확 하지 않음"
+          },
+          "500": {
+            "description": "API 서버에 문제가 발생하였음"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "ApiKeyAuth2": []
+          }
+        ]
+      }
+    },
+    "/15080859/v1/uddi:384ac420-6c4b-4a69-ac2d-cb2b43cbbbd3": {
+      "get": {
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "전북특별자치도 전주시_버스정류장_20240110",
+        "operationId": "getuddi:384ac420-6c4b-4a69-ac2d-cb2b43cbbbd3",
+        "description": "전북특별자치도 전주시_버스정류장_20240110",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "page index",
+            "type": "integer",
+            "format": "int64",
+            "exclusiveMinimum": false,
+            "default": 1
+          },
+          {
+            "name": "perPage",
+            "in": "query",
+            "description": "page size",
+            "type": "integer",
+            "format": "int64",
+            "exclusiveMinimum": false,
+            "default": 10
+          },
+          {
+            "name": "returnType",
+            "in": "query",
+            "description": "응답의 데이터 타입을 선택할 수 있습니다. (기본값: JSON)<br/>XML형태의 응답결과를 얻기 위해서는 XML 값으로 설정",
+            "type": "string",
+            "exclusiveMinimum": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공적으로 수행 됨",
+            "schema": {
+              "$ref": "#/definitions/uddi:384ac420-6c4b-4a69-ac2d-cb2b43cbbbd3_api"
+            }
+          },
+          "401": {
+            "description": "인증 정보가 정확 하지 않음"
+          },
+          "500": {
+            "description": "API 서버에 문제가 발생하였음"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "ApiKeyAuth2": []
+          }
+        ]
+      }
+    },
+    "/15080859/v1/uddi:1ee32dc4-dac6-4d4f-9aaf-be8a8c283b9f": {
+      "get": {
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "전북특별자치도 전주시_버스정류장_20250207",
+        "operationId": "getuddi:1ee32dc4-dac6-4d4f-9aaf-be8a8c283b9f",
+        "description": "전북특별자치도 전주시_버스정류장_20250207",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "page index",
+            "type": "integer",
+            "format": "int64",
+            "exclusiveMinimum": false,
+            "default": 1
+          },
+          {
+            "name": "perPage",
+            "in": "query",
+            "description": "page size",
+            "type": "integer",
+            "format": "int64",
+            "exclusiveMinimum": false,
+            "default": 10
+          },
+          {
+            "name": "returnType",
+            "in": "query",
+            "description": "응답의 데이터 타입을 선택할 수 있습니다. (기본값: JSON)<br/>XML형태의 응답결과를 얻기 위해서는 XML 값으로 설정",
+            "type": "string",
+            "exclusiveMinimum": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공적으로 수행 됨",
+            "schema": {
+              "$ref": "#/definitions/uddi:1ee32dc4-dac6-4d4f-9aaf-be8a8c283b9f_api"
+            }
+          },
+          "401": {
+            "description": "인증 정보가 정확 하지 않음"
+          },
+          "500": {
+            "description": "API 서버에 문제가 발생하였음"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "ApiKeyAuth2": []
+          }
+        ]
+      }
+    },
+    "/15080859/v1/uddi:843bf5fa-ed46-4a3c-962e-f7c98be8a2cc": {
+      "get": {
+        "tags": [
+          "API 목록"
+        ],
+        "summary": "전북특별자치도 전주시_버스정류장_20260212",
+        "operationId": "getuddi:843bf5fa-ed46-4a3c-962e-f7c98be8a2cc",
+        "description": "전북특별자치도 전주시_버스정류장_20260212",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "page index",
+            "type": "integer",
+            "format": "int64",
+            "exclusiveMinimum": false,
+            "default": 1
+          },
+          {
+            "name": "perPage",
+            "in": "query",
+            "description": "page size",
+            "type": "integer",
+            "format": "int64",
+            "exclusiveMinimum": false,
+            "default": 10
+          },
+          {
+            "name": "returnType",
+            "in": "query",
+            "description": "응답의 데이터 타입을 선택할 수 있습니다. (기본값: JSON)<br/>XML형태의 응답결과를 얻기 위해서는 XML 값으로 설정",
+            "type": "string",
+            "exclusiveMinimum": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공적으로 수행 됨",
+            "schema": {
+              "$ref": "#/definitions/uddi:843bf5fa-ed46-4a3c-962e-f7c98be8a2cc_api"
+            }
+          },
+          "401": {
+            "description": "인증 정보가 정확 하지 않음"
+          },
+          "500": {
+            "description": "API 서버에 문제가 발생하였음"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "ApiKeyAuth2": []
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "uddi:3983db8f-c40d-4016-9ccf-ead2ebc861f2_model": {
+      "type": "object",
+      "properties": {
+        "설치 지점명": {
+          "type": "string",
+          "description": ""
+        },
+        "지역(구)": {
+          "type": "string",
+          "description": ""
+        },
+        "지역(동)": {
+          "type": "string",
+          "description": ""
+        },
+        "세부주소": {
+          "type": "string",
+          "description": ""
+        },
+        "행정동": {
+          "type": "string",
+          "description": ""
+        },
+        "위도": {
+          "type": "string",
+          "description": ""
+        },
+        "경도": {
+          "type": "string",
+          "description": ""
+        }
+      }
+    },
+    "uddi:3983db8f-c40d-4016-9ccf-ead2ebc861f2_api": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "perPage": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "totalCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "currentCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "matchCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/uddi:3983db8f-c40d-4016-9ccf-ead2ebc861f2_model"
+          }
+        }
+      }
+    },
+    "uddi:384ac420-6c4b-4a69-ac2d-cb2b43cbbbd3_model": {
+      "type": "object",
+      "properties": {
+        "정류장ID": {
+          "type": "string",
+          "description": ""
+        },
+        "정류장명": {
+          "type": "string",
+          "description": ""
+        },
+        "정류장번호": {
+          "type": "integer",
+          "description": ""
+        },
+        "위도": {
+          "type": "string",
+          "description": ""
+        },
+        "경도": {
+          "type": "string",
+          "description": ""
+        }
+      }
+    },
+    "uddi:384ac420-6c4b-4a69-ac2d-cb2b43cbbbd3_api": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "perPage": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "totalCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "currentCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "matchCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/uddi:384ac420-6c4b-4a69-ac2d-cb2b43cbbbd3_model"
+          }
+        }
+      }
+    },
+    "uddi:1ee32dc4-dac6-4d4f-9aaf-be8a8c283b9f_model": {
+      "type": "object",
+      "properties": {
+        "연번": {
+          "type": "integer",
+          "description": ""
+        },
+        "정류장명": {
+          "type": "string",
+          "description": ""
+        },
+        "정류장번호": {
+          "type": "integer",
+          "description": ""
+        },
+        "위도": {
+          "type": "string",
+          "description": ""
+        },
+        "경도": {
+          "type": "string",
+          "description": ""
+        }
+      }
+    },
+    "uddi:1ee32dc4-dac6-4d4f-9aaf-be8a8c283b9f_api": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "perPage": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "totalCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "currentCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "matchCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/uddi:1ee32dc4-dac6-4d4f-9aaf-be8a8c283b9f_model"
+          }
+        }
+      }
+    },
+    "uddi:843bf5fa-ed46-4a3c-962e-f7c98be8a2cc_model": {
+      "type": "object",
+      "properties": {
+        "연번": {
+          "type": "integer",
+          "description": ""
+        },
+        "정류장명": {
+          "type": "string",
+          "description": ""
+        },
+        "정류장번호": {
+          "type": "integer",
+          "description": ""
+        },
+        "위도": {
+          "type": "string",
+          "description": ""
+        },
+        "경도": {
+          "type": "string",
+          "description": ""
+        }
+      }
+    },
+    "uddi:843bf5fa-ed46-4a3c-962e-f7c98be8a2cc_api": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "perPage": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "totalCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "currentCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "matchCount": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/uddi:843bf5fa-ed46-4a3c-962e-f7c98be8a2cc_model"
+          }
+        }
+      }
+    }
+  }
+}

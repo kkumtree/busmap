@@ -1,0 +1,18 @@
+{
+  "name": "jeonju-busmap",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/prepare-map.mjs && python3 scripts/dev_server.py",
+    "check:api": "node --env-file=.env scripts/check-api.mjs",
+    "check:journey": "node --env-file=.env scripts/check-journey.mjs",
+    "test": "node --test",
+    "postinstall": "node scripts/prepare-map.mjs"
+  },
+  "devDependencies": {
+    "@xmldom/xmldom": "^0.9.12"
+  },
+  "dependencies": {
+    "maplibre-gl": "6.16.0"
+  }
+}
