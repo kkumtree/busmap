@@ -12,9 +12,11 @@ export function networkView(plan,{selected='',onSelect=()=>{}}={}) {
   const {height,branches}=networkLayout(plan),id='network-'+serial++;
   const box=document.createElement('div');box.className='transfer-network';box.style.height=height+'px';
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox',`0 0 600 ${height}`);svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');
-  svg.innerHTML=`<defs><marker id="${id}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8" fill="#9ba991"/></marker></defs>`;
-  for(const branch of branches){const origin=branch.kind==='origin',start=origin?[180,branch.y]:[380,height/2],end=origin?[220,height/2]:[420,branch.y];
-    const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',`M${start} C${origin?205:405},${start[1]} ${origin?195:395},${end[1]} ${end}`);path.setAttribute('class','network-path '+(selected===`${branch.kind}:${branch.index}`?'selected':''));path.setAttribute('marker-end',`url(#${id})`);svg.append(path);
+  svg.innerHTML=`<defs><marker id="${id}" viewBox="0 0 6 6" refX="5.5" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0 L6 3 L0 6 Z" fill="#a49c8d"/></marker></defs>`;
+  // 직각 꺾임 연결선: 각진 문서 UI에 맞춰 수평 → 수직 → 수평으로만 잇습니다.
+  for(const branch of branches){const origin=branch.kind==='origin';
+    const y=Math.round(branch.y),mid=Math.round(height/2),startX=origin?180:380,cornerX=origin?200:400,endX=origin?220:420;
+    const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',`M${startX} ${y} H${cornerX} V${mid} H${endX}`);path.setAttribute('class','network-path '+(selected===`${branch.kind}:${branch.index}`?'selected':''));path.setAttribute('marker-end',`url(#${id})`);svg.append(path);
     const hit=path.cloneNode();hit.setAttribute('class','network-path-hit');hit.removeAttribute('marker-end');hit.onclick=()=>onSelect(branch.kind,branch.index);svg.append(hit);
   }
   box.append(svg);

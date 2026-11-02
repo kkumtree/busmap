@@ -6,6 +6,7 @@ import {networkView} from './network-view.js';
 import {shapeStore} from './shape-cache.js';
 import {getShapeOnQuery,clipShape,geometryState} from './route-geometry.js';
 import {PLANS_KEY,emptyPlan,cleanPoint,cleanRoute,pointKey,validatePlan,readPlans,writePlan,arrivalTargets,stopHint} from './plan-model.js';
+import {DEFAULT_REGION_ID,regionById,inRegion,applyRegion} from './regions/index.js';
 
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -16,6 +17,7 @@ const shapes=shapeStore();
 let plan=emptyPlan(),tab='plan',activeRole='origin',service={from:null,to:null},viewedPlan=null;
 let keys={},version=0,loading=false,popup,toastTimer,specPromise,deleted;
 const client=createClient(source=>keys[source]||keys.default||'');
+const region=regionById(DEFAULT_REGION_ID);
 const ids=new Map(),markers=[],pending=new Set();
 const cache=read('busmap.route-stops.v2',{}),entries=cache&&typeof cache==='object'&&!Array.isArray(cache)?cache:{};
 const stopCache=read('busmap.stops.v1',{});
@@ -42,7 +44,7 @@ async function standard(s){if(/^\d{9}$/.test(s.standardId||''))return s.standard
 ML.setWorkerUrl(new URL('./vendor/maplibre-gl-worker.mjs',import.meta.url).href);
 let map;
 try{
-  map=new ML.Map({container:'map',style:'./map-style.json',center:[127.135,35.825],zoom:12.3,attributionControl:false,pitchWithRotate:false,dragRotate:false});
+  map=new ML.Map({container:'map',style:region.mapStyle,center:[...region.center],zoom:region.zoom,attributionControl:false,pitchWithRotate:false,dragRotate:false});
   map.addControl(new ML.NavigationControl({showCompass:false}),'top-right');map.addControl(new ML.AttributionControl({compact:false}),'bottom-right');
   map.on('error',()=>{$('map-error').textContent='배경지도 연결을 확인하세요. 정류장 선택과 로컬 저장은 계속 사용할 수 있습니다.';$('map-error').hidden=false;});
   map.on('load',()=>{
@@ -57,7 +59,7 @@ try{
 }catch{$('map-error').hidden=false;$('map-error').textContent='지도 대신 정류장 이름·번호로 선택할 수 있습니다.';}
 function features(){return {type:'FeatureCollection',features:stops.flatMap((s,index)=>validCoordinates(s)?[{type:'Feature',geometry:{type:'Point',coordinates:[s.lon,s.lat]},properties:{index}}]:[])};}
 function currentRoles(){return tab==='service'?[['serviceFrom','출발지'],['serviceTo','도착지']]:[['origin','출발지 추가'],['transfer','환승지 지정'],['destination','도착지 추가']];}
-function focusStop(s){if(map&&validCoordinates(s))map.flyTo({center:[s.lon,s.lat],zoom:15,padding:window.matchMedia('(max-width:940px)').matches?{top:35,left:25,right:25,bottom:300}:{top:70,left:70,right:70,bottom:70}});}
+function focusStop(s){if(map&&validCoordinates(s))map.flyTo({center:[s.lon,s.lat],zoom:inRegion(region,s)?15:13.5,padding:window.matchMedia('(max-width:940px)').matches?{top:35,left:25,right:25,bottom:300}:{top:70,left:70,right:70,bottom:70}});}
 function showStop(s){
   if(tab==='saved'){tell('정류장을 지정하려면 환승지 지정 탭을 선택하세요.');return;}
   if(!map)return addPoint(activeRole,s);
@@ -209,13 +211,42 @@ function selectTab(name){clearLines();tab=name;for(const b of document.querySele
 for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>selectTab(b.dataset.tab);
 $('panel-toggle').onclick=()=>{const collapsed=document.querySelector('.sidebar').classList.toggle('collapsed');$('panel-body').hidden=collapsed;$('panel-toggle').textContent=collapsed?'펼치기':'접기';$('panel-toggle').setAttribute('aria-expanded',String(!collapsed));};
 const KEY_FIELDS=[['default','api-key'],['stops','stops-key'],['routes','routes-key'],['realtime','realtime-key'],['transfer','transfer-key']];
+const KEY_STORE='busmap.apikeys.v1',KEY_NOTICE='busmap.apikeys.notice.v1',CONSENT_SECONDS=5;
+const cleanKeys=value=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.entries(value).filter(([,v])=>typeof v==='string'&&v.trim())):{};
+function readStoredKeys(){try{return cleanKeys(JSON.parse(storage.getItem(KEY_STORE)||'null')?.keys);}catch{return {};}}
+let storedKeys=readStoredKeys(),persistKeys=Object.keys(storedKeys).length>0;
+let consentOpen=false,consentReady=false,consentLeft=0,consentTimer=null;
+keys={...storedKeys};
 function maskKey(value){const key=String(value||'');return key.length<=8?key.slice(0,2)+'••••'+key.slice(-2):key.slice(0,4)+'••••'+key.slice(-4);}
-function renderKeyState(){
-  for(const [source,id] of KEY_FIELDS){const el=$(id+'-state');if(!el)continue;const key=keys[source]||'';el.classList.toggle('set',Boolean(key));el.textContent=key?`적용됨 · ${maskKey(key)} · 이 탭의 메모리에만 보관`:'미설정';}
+function hasKeys(){return Object.keys(keys).length>0;}
+function writeStoredKeys(){try{storage.setItem(KEY_STORE,JSON.stringify({keys,savedAt:new Date().toISOString()}));storedKeys=readStoredKeys();return true;}catch(e){$('settings-error').textContent='브라우저 저장에 실패했습니다. '+e.message;return false;}}
+function eraseStoredKeys(){try{storage.removeItem(KEY_STORE);}catch{}storedKeys={};}
+function paintKeyOptions(){
+  $('key-persist').checked=persistKeys||consentOpen;
+  $('key-consent').hidden=!consentOpen;
+  $('key-consent-text').textContent=consentReady?'동의하면 현재 키를 이 브라우저에 저장합니다. 공용 PC라면 권하지 않습니다.':`${Math.max(consentLeft,0)}초 뒤에 동의 버튼이 열립니다.`;
+  $('key-consent-ok').disabled=!consentReady;
+  const state=$('key-persist-state');state.classList.toggle('on',persistKeys);
+  state.textContent=persistKeys?'켜짐 · 이 브라우저를 쓰는 사람과 페이지 스크립트가 키를 읽을 수 있습니다.':'꺼짐 · 이 탭의 메모리에만 보관합니다.';
+  $('api-key-warn').hidden=!(persistKeys&&hasKeys());
 }
-$('settings-open').onclick=()=>{renderKeyState();$('settings').showModal();};$('settings-close').onclick=()=>$('settings').close();
-$('settings-form').onsubmit=e=>{e.preventDefault();const next={...keys};for(const [source,id] of KEY_FIELDS){const value=$(id).value.trim();if(value)next[source]=value;}if(!Object.values(next).some(Boolean)){$('settings-error').textContent='키를 입력하세요.';return;}++version;client.reset();keys=next;$('settings-form').reset();$('settings-error').textContent='';renderKeyState();$('settings').close();tell('키를 적용했습니다. 조회 버튼을 누를 때만 요청합니다.');};
-$('clear-key').onclick=()=>{++version;client.reset();keys={};$('settings-form').reset();renderKeyState();$('settings').close();tell('키를 지웠습니다. 저장한 묶음은 유지됩니다.');};
+function renderKeyState(){
+  for(const [source,id] of KEY_FIELDS){const el=$(id+'-state');if(!el)continue;const key=keys[source]||'';el.classList.toggle('set',Boolean(key));el.classList.toggle('stored',Boolean(key)&&persistKeys);el.textContent=key?`적용됨 · ${maskKey(key)} · ${persistKeys?'브라우저에 저장됨':'이 탭의 메모리에만 보관'}`:'미설정';}
+  paintKeyOptions();
+}
+function stopConsent(){clearInterval(consentTimer);consentTimer=null;}
+function cancelConsent(){stopConsent();consentOpen=consentReady=false;consentLeft=0;paintKeyOptions();}
+function startConsent(){consentOpen=true;consentReady=false;consentLeft=CONSENT_SECONDS;stopConsent();paintKeyOptions();consentTimer=setInterval(()=>{consentLeft-=1;if(consentLeft<=0){consentReady=true;stopConsent();}paintKeyOptions();},1000);}
+$('key-persist').onchange=e=>{
+  if(!e.target.checked){cancelConsent();if(persistKeys){persistKeys=false;eraseStoredKeys();renderKeyState();tell('브라우저 저장을 끄고 저장된 키를 지웠습니다. 이 탭에서는 계속 사용합니다.');}return;}
+  startConsent();
+};
+$('key-consent-ok').onclick=()=>{if(!consentReady)return;stopConsent();consentOpen=consentReady=false;persistKeys=true;if(hasKeys()&&!writeStoredKeys())persistKeys=false;renderKeyState();tell(persistKeys?'브라우저 저장에 동의했습니다. 현재 키를 저장했습니다.':'키를 먼저 적용한 뒤 다시 시도하세요.');};
+$('settings-open').onclick=()=>{renderKeyState();$('settings-error').textContent='';$('settings').showModal();};$('settings-close').onclick=()=>{cancelConsent();$('settings').close();};
+$('settings-form').onsubmit=e=>{e.preventDefault();const next={...keys};for(const [source,id] of KEY_FIELDS){const value=$(id).value.trim();if(value)next[source]=value;}if(!Object.values(next).some(Boolean)){$('settings-error').textContent='키를 입력하세요.';return;}++version;client.reset();keys=next;$('settings-form').reset();$('settings-error').textContent='';if(persistKeys)writeStoredKeys();renderKeyState();$('settings').close();tell(persistKeys?'키를 적용하고 이 브라우저에 저장했습니다.':'키를 적용했습니다. 이 탭의 메모리에만 있습니다.');};
+$('clear-key').onclick=()=>{++version;client.reset();keys={};eraseStoredKeys();$('settings-form').reset();renderKeyState();$('settings').close();tell('키를 지웠습니다. 저장한 묶음은 유지됩니다.');};
+$('key-warning-ack').onclick=()=>{try{sessionStorage.setItem(KEY_NOTICE,'1');}catch{}$('key-warning').close();};
+function maybeWarnStoredKeys(){if(!persistKeys||!hasKeys())return;let seen=false;try{seen=sessionStorage.getItem(KEY_NOTICE)==='1';}catch{}if(seen||$('key-warning').open)return;$('key-warning').showModal();}
 $('load-data').onclick=async()=>{
   if(loading||!requireKeys(['stops']))return;loading=true;$('load-data').disabled=true;
   try{const dataset=latestStopDataset(await getSpec()),rows=[];for(let page=1;;page++){const result=await client.get('stops',dataset.path,{page,perPage:1000,returnType:'JSON'});rows.push(...result.rows);if(rows.length>=result.total)break;if(!result.rows.length||page>=50)throw new Error('정류장 일부를 받지 못했습니다.');}
@@ -224,6 +255,6 @@ $('load-data').onclick=async()=>{
   }catch(e){if(e.name!=='AbortError')tell(e.message);}finally{loading=false;$('load-data').disabled=false;}
 };
 if(stops.length)$('dataset-label').textContent=`저장된 정류장 ${stops.length.toLocaleString()}개`;
-renderPlan();renderServicePoints();renderSaved();renderPicker();renderKeyState();
+renderPlan();renderServicePoints();renderSaved();renderPicker();renderKeyState();applyRegion(document,region);maybeWarnStoredKeys();
 
 $('stop-picker').addEventListener('toggle',()=>{if(map?.getLayer('bus-stops'))map.setLayoutProperty('bus-stops','visibility',$('stop-picker').open&&tab!=='saved'?'visible':'none');});
