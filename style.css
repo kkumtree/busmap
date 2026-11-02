@@ -345,3 +345,7 @@ dialog p{font:400 12.5px/1.85 var(--serif);color:var(--muted)}
 .layer-toggle .layer-toggle-button[aria-expanded="true"] .layer-icon::after{border-color:var(--paper);background:transparent}
 .rail-foot{margin-bottom:2px}
 .network-node.hub .hub-stop-id{font:400 12px/1.4 var(--mono);letter-spacing:.2px}
+#dataset-label{background:none;border:0;border-bottom:1px solid transparent;border-radius:0;padding:2px 0;color:var(--muted);font:400 12px/1.4 var(--mono);letter-spacing:-.2px;cursor:pointer}
+#dataset-label:hover{background:none;color:var(--ink);border-bottom-color:var(--ink)}
+#dataset-label.needs-key{color:var(--rose-ink);border-bottom-color:var(--rose)}
+#dataset-label.needs-key:hover{color:var(--ink);border-bottom-color:var(--ink)}

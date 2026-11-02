@@ -23,6 +23,7 @@ const cache=read('busmap.route-stops.v2',{}),entries=cache&&typeof cache==='obje
 const stopCache=read('busmap.stops.v1',{});
 let stops=Array.isArray(stopCache.stops)?stopCache.stops.filter(s=>s && typeof s.number==='string' && typeof s.name==='string'):[];
 const legacy=readJourneys(storage);
+let datasetLabel='';
 function tell(s){$('notice').textContent=s;$('notice').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('notice').hidden=true,6500);}
 function message(el,s,bad=false){el.replaceChildren();const p=document.createElement('p');p.className=bad?'error':'small-note';p.textContent=s;el.append(p);}
 function stopLabel(s){return `${esc(s.name)} <small class="stop-number">${esc(s.number)}</small>`;}
@@ -258,10 +259,18 @@ function paintKeyOptions(){
   state.textContent=persistKeys?'켜짐 · 이 브라우저를 쓰는 사람과 페이지 스크립트가 키를 읽을 수 있습니다.':'꺼짐 · 이 탭의 메모리에만 보관합니다.';
   $('api-key-warn').hidden=!(persistKeys&&hasKeys());
 }
+function renderDataset(){
+  const el=$('dataset-label');if(!el)return;
+  const keyed=hasKeys(),detail=datasetLabel||(stops.length?`저장된 정류장 ${stops.length.toLocaleString()}개`:'');
+  el.classList.toggle('needs-key',!keyed);
+  el.textContent=keyed?(detail||'정류장 불러오기를 눌러 주세요'):'API 키를 입력해주세요';
+  el.title=keyed?(detail||'정류장 데이터'):'API 키를 입력하려면 누르세요';
+}
 function renderKeyState(){
   for(const [source,id] of KEY_FIELDS){const el=$(id+'-state');if(!el)continue;const key=keys[source]||'';el.classList.toggle('set',Boolean(key));el.classList.toggle('stored',Boolean(key)&&persistKeys);el.textContent=key?`적용됨 · ${maskKey(key)} · ${persistKeys?'브라우저에 저장됨':'이 탭의 메모리에만 보관'}`:'미설정';}
-  paintKeyOptions();
+  paintKeyOptions();renderDataset();
 }
+$('dataset-label').onclick=()=>{renderKeyState();$('settings').showModal();};
 function stopConsent(){clearInterval(consentTimer);consentTimer=null;}
 function cancelConsent(){stopConsent();consentOpen=consentReady=false;consentLeft=0;paintKeyOptions();}
 function startConsent(){consentOpen=true;consentReady=false;consentLeft=CONSENT_SECONDS;stopConsent();paintKeyOptions();consentTimer=setInterval(()=>{consentLeft-=1;if(consentLeft<=0){consentReady=true;stopConsent();}paintKeyOptions();},1000);}
@@ -279,10 +288,10 @@ $('load-data').onclick=async()=>{
   if(loading||!requireKeys(['stops']))return;loading=true;$('load-data').disabled=true;
   try{const dataset=latestStopDataset(await getSpec()),rows=[];for(let page=1;;page++){const result=await client.get('stops',dataset.path,{page,perPage:1000,returnType:'JSON'});rows.push(...result.rows);if(rows.length>=result.total)break;if(!result.rows.length||page>=50)throw new Error('정류장 일부를 받지 못했습니다.');}
     stops=rows.map(normalizeStop).filter(s=>s.name&&s.number&&validCoordinates(s));try{storage.setItem('busmap.stops.v1',JSON.stringify({date:dataset.date,stops}));}catch{tell('정류장 로컬 저장 공간이 부족합니다.');}
-    $('dataset-label').textContent=`${dataset.date} · ${stops.length.toLocaleString()}개`;map?.getSource('bus-stops')?.setData(features());renderPicker();tell('최신 정류장 목록을 불러왔습니다.');
+    datasetLabel=`${dataset.date} · ${stops.length.toLocaleString()}개`;renderDataset();map?.getSource('bus-stops')?.setData(features());renderPicker();tell('최신 정류장 목록을 불러왔습니다.');
   }catch(e){if(e.name!=='AbortError')tell(e.message);}finally{loading=false;$('load-data').disabled=false;}
 };
-if(stops.length)$('dataset-label').textContent=`저장된 정류장 ${stops.length.toLocaleString()}개`;
+
 renderPlan();renderServicePoints();renderSaved();renderPicker();renderKeyState();applyRegion(document,region);maybeWarnStoredKeys();
 
 $('stop-picker').addEventListener('toggle',()=>{if(map?.getLayer('bus-stops'))map.setLayoutProperty('bus-stops','visibility',$('stop-picker').open&&tab!=='saved'?'visible':'none');});
