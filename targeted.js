@@ -32,7 +32,7 @@ export async function resolveStopIdentity(client,point,spec,ids=new Map(),check=
   ids.set(cacheKey,match[1]);return match[1];
 }
 
-export async function queryDirectLeg(client,from,to,{getSpec=fetchStopSpec,ids=new Map(),entries={},allowedNumbers,check=()=>{},onProgress=()=>{}}={}) {
+export async function queryDirectLeg(client,from,to,{getSpec=fetchStopSpec,ids=new Map(),entries={},check=()=>{},onProgress=()=>{}}={}) {
   const spec=await getSpec();check();
   const fromId=await resolveStopIdentity(client,from,spec,ids,check);
   const toId=await resolveStopIdentity(client,to,spec,ids,check);
@@ -49,7 +49,6 @@ export async function queryDirectLeg(client,from,to,{getSpec=fetchStopSpec,ids=n
     const id=f(row,'startId');if(id && !candidates.has(id))candidates.set(id,{id,number:f(row,'startNo'),destination:'',direction:''});
   }
   const routes=[];let n=0;
-  if(allowedNumbers)for(const [id,route]of candidates)if(!allowedNumbers.includes(route.number))candidates.delete(id);
   for(const route of candidates.values()) {
     check();
     let saved=entries[route.id];
