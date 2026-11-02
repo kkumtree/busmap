@@ -104,7 +104,7 @@ function addPoint(role,value){
     const group=role==='origin'?plan.origins:plan.destinations;
     if(group.some(e=>pointKey(e.stop)===pointKey(s))){tell('이미 추가한 정류장입니다.');return;}
     if(plan.transfer&&pointKey(plan.transfer)===pointKey(s)){tell('환승지와 다른 정류장을 골라 주세요.');return;}
-    group.push({stop:s,routes:[]});
+    group.push({stop:s,routes:[]});focused=`${role}:${group.length-1}`;
   }else if(role==='transfer'){
     if([...plan.origins,...plan.destinations].some(e=>pointKey(e.stop)===pointKey(s))){tell('출발지·도착지와 다른 환승지를 골라 주세요.');return;}
     if(plan.transfer&&pointKey(plan.transfer)!==pointKey(s))for(const e of [...plan.origins,...plan.destinations])e.routes=[];
@@ -129,24 +129,43 @@ function messageFooter(el,text){const p=document.createElement('p');p.className=
 $('stop-search').oninput=renderSearch;
 $('manual-stop-form').onsubmit=e=>{e.preventDefault();const number=$('manual-number').value.trim();if(!/^\d+$/.test(number))return;const s=stops.find(p=>p.number===number)||{number,name:$('manual-name').value.trim()||`정류장 ${number}`,lat:null,lon:null};addPoint(activeRole,s);$('manual-stop-form').reset();};
 function stopCard(s){const card=document.createElement('div');card.className='stop-card';card.innerHTML=`<button type="button" class="stop-location">${stopLabel(s)}${meta(s)}</button>`;card.querySelector('button').onclick=()=>focusStop(s);return card;}
+function selectConnection(kind,index){
+  focused=`${kind}:${index}`;renderPlan();
+  const entry=(kind==='origin'?plan.origins:plan.destinations)[index];
+  if(entry)showEdgeLines(plan,kind,entry,true);
+  $('connection-detail').scrollIntoView({block:'nearest'});
+}
 function renderPlan(){
+  const connections=[...plan.origins.map((entry,index)=>({kind:'origin',entry,index})),...plan.destinations.map((entry,index)=>({kind:'destination',entry,index}))];
+  if(!connections.some(({kind,index})=>focused===`${kind}:${index}`))focused=connections.length?`${connections[0].kind}:${connections[0].index}`:'';
   $('plan-name').value=plan.name;
   $('plan-network').replaceChildren(networkView(plan,{selected:focused,onSelect:(kind,index)=>{
     if(kind==='transfer'){pick('transfer');return;}
     if(kind.startsWith('add-')){pick(kind.slice(4));return;}
-    focused=focused===`${kind}:${index}`?'':`${kind}:${index}`;renderPlan();
-    const entry=(kind==='origin'?plan.origins:plan.destinations)[index];if(focused)showEdgeLines(plan,kind,entry,true);else clearLines();
+    selectConnection(kind,index);
   }}));
+  const picker=$('connection-picker');picker.replaceChildren();
+  if(connections.length){
+    const title=document.createElement('h3');title.textContent='구간별 노선 선택';picker.append(title);
+    for(const {kind,entry,index}of connections){
+      const button=document.createElement('button');button.type='button';button.className='connection-choice';
+      button.setAttribute('aria-pressed',String(focused===`${kind}:${index}`));button.setAttribute('aria-controls','connection-detail');
+      const endpoints=kind==='origin'?`${entry.stop.name} → ${plan.transfer?.name||'환승지 미지정'}`:`${plan.transfer?.name||'환승지 미지정'} → ${entry.stop.name}`;
+      button.innerHTML=`<span><small>${kind==='origin'?'1구간':'2구간'}</small><b>${esc(endpoints)}</b></span><span class="connection-action">${entry.routes.length?`노선 ${entry.routes.filter(r=>r.selected).length}/${entry.routes.length}개`:'노선 선택'} →</span>`;
+      button.onclick=()=>selectConnection(kind,index);picker.append(button);
+    }
+  }
   $('connection-detail').replaceChildren();
   if(focused){const [kind,raw]=focused.split(':'),group=kind==='origin'?plan.origins:plan.destinations,entry=group[Number(raw)];if(entry)renderConnection(kind,entry,group);else focused='';}
 }
 function renderConnection(kind,entry,group){
   const box=$('connection-detail'),card=stopCard(entry.stop);card.classList.add('edge-card');
-  const h=document.createElement('h3');h.className='edge-title';h.textContent=kind==='origin'?`1구간 · ${entry.stop.number} → ${plan.transfer.number}`:`2구간 · ${plan.transfer.number} → ${entry.stop.number}`;card.prepend(h);
+  const h=document.createElement('h3');h.className='edge-title';h.textContent=kind==='origin'?`1구간 · ${entry.stop.number} → ${plan.transfer?.number||'환승지 미지정'}`:`2구간 · ${plan.transfer?.number||'환승지 미지정'} → ${entry.stop.number}`;card.prepend(h);
   const remove=document.createElement('button');remove.className='quiet remove-stop';remove.textContent='×';remove.setAttribute('aria-label',`${entry.stop.name} ${entry.stop.number} 삭제`);remove.onclick=()=>{edit();group.splice(group.indexOf(entry),1);renderPlan();showPoints();};card.append(remove);
   const routeBox=document.createElement('div');routeBox.className='route-choices';
   for(const route of entry.routes){const label=document.createElement('label');label.className='route-check';label.innerHTML=`<input type="checkbox" ${route.selected?'checked':''}><span><b>${esc(route.number)}번</b>${route.destination?'<small>'+esc(route.destination)+'</small>':''}<small>${route.verified?'경유 확인':'경유 확인 전'} · ${esc(geometryState(route).label)}</small>${geometryState(route).detail?'<small class="geometry-reason">'+esc(geometryState(route).detail)+'</small>':''}</span>`;label.querySelector('input').onchange=e=>{route.selected=e.target.checked;renderPlan();showEdgeLines(plan,kind,entry);};routeBox.append(label);}
-  card.append(routeBox);const tools=document.createElement('div');tools.className='edge-tools';const query=document.createElement('button');query.textContent=pending.has(entry)?'조회 중…':'후보 노선 조회';query.disabled=!plan.transfer||pending.has(entry);query.onclick=()=>queryEdge(kind,entry);tools.append(query);card.append(tools);
+  if(!entry.routes.length){const empty=document.createElement('p');empty.className='small-note';empty.textContent=plan.transfer?'아직 조회한 후보 노선이 없습니다. 아래 버튼으로 조회한 뒤 이용할 노선을 선택하세요.':'환승지를 지정하면 이 구간의 후보 노선을 조회할 수 있습니다.';routeBox.append(empty);}
+  card.append(routeBox);const tools=document.createElement('div');tools.className='edge-tools';const query=document.createElement('button');query.textContent=pending.has(entry)?'조회 중…':'후보 노선 조회';query.disabled=!plan.transfer||pending.has(entry);query.onclick=()=>queryEdge(kind,entry);if(!plan.transfer){const choose=document.createElement('button');choose.type='button';choose.textContent='환승지 지정';choose.onclick=()=>pick('transfer');tools.append(choose);}query.type='button';tools.append(query);card.append(tools);
   const note=document.createElement('p');note.className=entry.error?'error':'small-note';note.textContent=entry.error||entry.note||'이 버튼을 누를 때만 후보 노선과 형상을 조회합니다. 저장된 형상은 재사용합니다.';card.append(note);box.append(card);
 }
 $('add-origin').onclick=()=>pick('origin');$('add-destination').onclick=()=>pick('destination');$('change-transfer').onclick=()=>pick('transfer');

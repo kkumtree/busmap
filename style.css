@@ -349,3 +349,19 @@ dialog p{font:400 12.5px/1.85 var(--serif);color:var(--muted)}
 #dataset-label:hover{background:none;color:var(--ink);border-bottom-color:var(--ink)}
 #dataset-label.needs-key{color:var(--rose-ink);border-bottom-color:var(--rose)}
 #dataset-label.needs-key:hover{color:var(--ink);border-bottom-color:var(--ink)}
+
+/* Keep route selection visible in the document column. */
+.connection-picker{margin:22px 0 12px;border-top:1px solid var(--ink)}
+.connection-picker:empty{display:none}
+.connection-picker h3{font:500 12px/1.5 var(--mono);color:var(--muted);margin:12px 0 8px}
+.connection-choice{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;margin-top:6px;padding:11px 12px;letter-spacing:0}
+.connection-choice[aria-pressed=true]{border-color:var(--ink);background:#f3eee2;box-shadow:inset 3px 0 var(--rose)}
+.connection-choice>span:first-child{min-width:0}
+.connection-choice small{display:block;font:400 12px/1.4 var(--mono);color:var(--muted);margin-bottom:4px}
+.connection-choice b{display:block;font:600 12.5px/1.7 var(--serif);overflow-wrap:anywhere}
+.connection-action{flex:0 0 auto;font:500 12px/1.5 var(--mono);color:var(--ink-soft)}
+#connection-detail{scroll-margin:16px}
+.edge-tools{gap:8px;flex-wrap:wrap}
+.route-choices{flex-direction:column;flex-wrap:nowrap}
+.route-check{width:100%}
+.route-check small{max-width:none}
