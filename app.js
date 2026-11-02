@@ -16,7 +16,8 @@ let focused='',geometryVersion=0,routeFeatures={type:'FeatureCollection',feature
 const shapes=shapeStore();
 let plan=emptyPlan(),tab='plan',activeRole='origin',service={from:null,to:null},viewedPlan=null;
 let keys={},version=0,loading=false,popup,toastTimer,specPromise,deleted;
-const client=createClient(source=>keys[source]||keys.default||'');
+const callCounts={stops:0,routes:0,realtime:0,transfer:0};
+const client=createClient(source=>keys[source]||keys.default||'',{onRequest:source=>{$('calls-'+source).textContent=++callCounts[source];}});
 const region=regionById(DEFAULT_REGION_ID);
 const labelLayers=[['show-dong','legal-dong-names'],['show-neighbourhoods','neighbourhood-names'],['show-schools','school-names'],['show-public','public-facility-names'],['show-rail','railway-station-names'],['show-terminals','bus-terminal-names'],['show-medical','medical-facility-names'],['show-parks','park-place-names']];
 const ids=new Map(),markers=[],pending=new Set();

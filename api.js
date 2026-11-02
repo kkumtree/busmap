@@ -93,7 +93,7 @@ export function arrivalTime(value) {
   return `약 ${Math.ceil(seconds / 60)}분`;
 }
 
-export function createClient(getKey) {
+export function createClient(getKey, {onRequest=()=>{}}={}) {
   let controller = new AbortController();
   return {
     reset() { controller.abort(); controller = new AbortController(); },
@@ -103,6 +103,7 @@ export function createClient(getKey) {
       const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]);
       let response;
       try {
+        onRequest(source);
         response = await fetch(url, {signal, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', redirect: 'error'});
       } catch (e) {
         if (e.name === 'AbortError') throw e;

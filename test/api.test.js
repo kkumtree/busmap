@@ -43,3 +43,13 @@ test('client reports provider errors without echoing credentials', async t => {
   t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({code:30,msg:'bad '+key}), {status:403}));
   await assert.rejects(createClient(() => key).get('stops','/15080859/v1/uddi:aaaa-bbbb'), e => !e.message.includes(key) && e.message.includes('[인증키]'));
 });
+test('request observer counts attempts including failures, but not missing-key validation',async t=>{
+  const counts={stops:0,routes:0,realtime:0,transfer:0};
+  t.mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify({code:'05',msg:'연결 실패'}),{status:503}));
+  const client=createClient(()=> 'fixture-key',{onRequest:source=>counts[source]++});
+  await assert.rejects(client.get('routes','bus_location1_common',{brtId:'101'}),/연결 실패/);
+  client.reset();
+  await assert.rejects(client.get('transfer','bus_stop_drawing_common',{}),/연결 실패/);
+  assert.deepEqual(counts,{stops:0,routes:1,realtime:0,transfer:1});
+  await assert.rejects(createClient(()=>'',{onRequest:()=>assert.fail('No request was made')}).get('routes','bus_location1_common'),/인증키/);
+});

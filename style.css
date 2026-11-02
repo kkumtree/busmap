@@ -379,3 +379,11 @@ dialog p{font:400 12.5px/1.85 var(--serif);color:var(--muted)}
 #map-line-status{right:55px}
 @media(max-width:940px){.maplibregl-ctrl-bottom-right{bottom:calc(48dvh + 8px)}}
 @media(max-width:560px){.maplibregl-ctrl-bottom-right{bottom:calc(52dvh + 8px)}}
+/* Page-lifetime request counts, in service order; no persisted state. */
+.rail-bottom{margin-top:auto;padding-top:20px}
+.rail-bottom .rail-rule{margin:12px 0 0}
+.api-counters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;color:var(--muted);font:400 12px/1.5 var(--mono);font-variant-numeric:tabular-nums;text-align:center}
+.api-counters output{min-width:0;padding:3px 4px;border-right:1px solid var(--rule);overflow-wrap:anywhere}
+.api-counters output:first-child{text-align:left;padding-left:0}
+.api-counters output:last-child{border-right:0;text-align:right;padding-right:0}
+@media(max-width:940px){.rail-bottom{display:flex;align-items:center;gap:14px;margin:0 0 0 auto;padding:0 10px;flex:0 0 auto}.api-counters{min-width:104px}.rail-bottom .rail-foot{margin-top:0}.api-counters output{padding:0 6px}}
