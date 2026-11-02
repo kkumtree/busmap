@@ -1,6 +1,6 @@
 import * as ML from './vendor/maplibre-gl.mjs';
 import {createClient,latestStopDataset,normalizeStop,arrivalTime,field as f} from './api.js';
-import {queryDirectLeg,fetchStopSpec,resolveStopIdentity,loadMappingCatalog,buildMappingBatch} from './targeted.js';
+import {queryDirectLeg,fetchStopSpec,resolveStopIdentity} from './targeted.js';
 import {readJourneys} from './journey.js';
 import {networkView} from './network-view.js';
 import {shapeStore} from './shape-cache.js';
@@ -22,8 +22,6 @@ const region=regionById(DEFAULT_REGION_ID);
 const labelLayers=[['show-dong','legal-dong-names'],['show-neighbourhoods','neighbourhood-names'],['show-schools','school-names'],['show-public','public-facility-names'],['show-rail','railway-station-names'],['show-terminals','bus-terminal-names'],['show-medical','medical-facility-names'],['show-parks','park-place-names']];
 const ids=new Map(),markers=[],pending=new Set();
 const cache=read('busmap.route-stops.v2',{}),entries=cache&&typeof cache==='object'&&!Array.isArray(cache)?cache:{};
-const savedMapping=read('busmap.route-mapping.v1',null);
-let mapping=savedMapping?.version===1&&Array.isArray(savedMapping.numbers)&&Array.isArray(savedMapping.routes)?savedMapping:null,mappingBusy=false,mappingController;
 const stopCache=read('busmap.stops.v1',{});
 let stops=Array.isArray(stopCache.stops)?stopCache.stops.filter(s=>s && typeof s.number==='string' && typeof s.name==='string'):[];
 const legacy=readJourneys(storage);
@@ -189,7 +187,7 @@ async function queryEdge(kind,entry){
   if(pending.has(entry)||!plan.transfer)return;
   const token=version;pending.add(entry);entry.error='';renderPlan();
   try{const from=kind==='origin'?entry.stop:plan.transfer,to=kind==='origin'?plan.transfer:entry.stop;
-    const result=await queryDirectLeg(client,from,to,{entries,mapping,check:()=>{if(token!==version)throw new DOMException('변경','AbortError');}});if(token!==version)return;
+    const result=await queryDirectLeg(client,from,to,{entries,check:()=>{if(token!==version)throw new DOMException('변경','AbortError');}});if(token!==version)return;
     if(!result.partial)entry.routes=entry.routes.filter(old=>result.routes.some(r=>r.routeId===old.routeId));
     for(const r of result.routes){const old=entry.routes.find(x=>x.routeId===r.routeId||(!x.routeId&&x.number===r.number));const checked=old?old.selected:false;const route=cleanRoute({...old,...r,geometryStatus:old?.geometryStatus||'not-requested',verified:true,selected:checked});if(old)Object.assign(old,route);else entry.routes.push(route);}
     if(result.routes[0]){from.standardId=result.routes[0].fromStandardId;to.standardId=result.routes[0].toStandardId;}
@@ -201,35 +199,11 @@ async function queryEdge(kind,entry){
       try{const shape=await getShapeOnQuery(client,shapes,r.routeId);if(token!==version)return;const section=clipShape(shape,from,to,r);r.shapeKey=r.routeId;r.segment=section.segment;r.geometryStatus=section.status;r.geometryMessage=section.message||'';if(!r.segment)geometryFailures++;}
       catch(error){if(token!==version||error.name==='AbortError')return;r.geometryStatus='request-error';r.geometryMessage=error.message;geometryFailures++;}
     }
-    entry.note=`저장된 노선 ${result.examined}개에서 경유 순서를 확인했습니다.${result.partial?' 전체 매핑 준비 전이므로 일부 노선이 누락될 수 있습니다.':''}${!result.routes.length?' 이 구간에 맞는 노선이 없습니다.':''}${geometryFailures?' 선형 미확보 '+geometryFailures+'개.':''}`;
+    entry.note=`저장된 노선 ${result.examined}개에서 경유 순서를 확인했습니다.${result.partial?' 현재 저장된 경유 정보 범위의 결과입니다.':''}${!result.routes.length?' 이 구간에 맞는 노선이 없습니다.':''}${geometryFailures?' 선형 미확보 '+geometryFailures+'개.':''}`;
     showEdgeLines(plan,kind,entry);
     try{storage.setItem('busmap.route-stops.v2',JSON.stringify(entries));}catch{}
-  }catch(e){if(token===version&&e.name!=='AbortError'){entry.error=e.message;if(!Object.values(entries).some(e=>e.number))$('route-mapping').open=true;}}finally{pending.delete(entry);if(token===version)renderPlan();}
+  }catch(e){if(token===version&&e.name!=='AbortError'){entry.error=e.message;}}finally{pending.delete(entry);if(token===version)renderPlan();}
 }
-const saveMapping=()=>{storage.setItem('busmap.route-stops.v2',JSON.stringify(entries));storage.setItem('busmap.route-mapping.v1',JSON.stringify(mapping));renderMapping();};
-function renderMapping(){
-  const status=$('mapping-status');
-  status.textContent=mapping?`${mapping.routes.filter(r=>r.done).length}개 노선 경유정보 저장 · 번호 확인 ${mapping.numbers.filter(n=>n.done).length}/${mapping.numbers.length}${mapping.complete?' · 전체 준비 완료':' · 일부 준비됨'}`:'아직 매핑이 없습니다. 노선번호 목록을 먼저 확인하세요.';
-  $('mapping-catalog').disabled=mappingBusy||Boolean(mapping&&!mapping.complete);
-  $('mapping-catalog').textContent=mapping?.complete?'노선 매핑 새로 준비 (목록 1회)':'노선번호 목록 확인 (1회)';
-  $('mapping-build').disabled=mappingBusy||!mapping||mapping.complete;
-  $('mapping-build').textContent=mapping?.routes.length?'매핑 이어서 준비 (최대 50회)':'매핑 준비 (최대 50회)';
-  $('mapping-stop').hidden=!mappingBusy;
-}
-$('mapping-catalog').onclick=async()=>{
-  if(mappingBusy||(mapping&&!mapping.complete)||!requireKeys(['routes']))return;mappingBusy=true;renderMapping();
-  try{mapping=await loadMappingCatalog(client);saveMapping();$('mapping-message').textContent=`노선번호 ${mapping.numbers.length}개를 확인했습니다. 다음 단계는 번호별 ID와 경유 정류장을 순차 저장합니다. 버튼 한 번에 최대 50회이며 실패 시 즉시 중단합니다.`;}
-  catch(error){$('mapping-message').textContent=error.message;}finally{mappingBusy=false;renderMapping();}
-};
-$('mapping-build').onclick=async()=>{
-  if(mappingBusy||!mapping||mapping.complete||!requireKeys(['routes']))return;mappingBusy=true;mappingController=new AbortController();renderMapping();
-  const batchClient={get:(source,operation,params)=>client.get(source,operation,params)};
-  try{const result=await buildMappingBatch(batchClient,mapping,entries,{limit:50,check:()=>{if(mappingController.signal.aborted)throw new DOMException('사용자 중단','AbortError');},save:saveMapping,onProgress:calls=>{$('mapping-message').textContent=`이번 작업 ${calls}/50회 요청 · 오류나 중단 시 자동 재시도하지 않습니다.`;}});$('mapping-message').textContent=`이번 작업 ${result.calls}회 요청. ${result.complete?'전체 매핑을 저장했습니다.':'여기서 멈췄습니다. 필요할 때 이어서 준비하세요.'}`;}
-  catch(error){$('mapping-message').textContent=error.name==='AbortError'?'준비를 중단했습니다. 저장된 결과는 유지합니다.':`준비 중단: ${error.message} (이번 ${error.mappingCalls||0}회). 자동 재시도하지 않습니다.`;}
-  finally{mappingBusy=false;renderMapping();renderPlan();}
-};
-$('mapping-stop').onclick=()=>{mappingController?.abort();client.reset();};
-renderMapping();
 $('plan-name').oninput=e=>plan.name=e.target.value;
 $('new-plan').onclick=()=>{edit();plan=emptyPlan();clearEntry();renderPlan();renderPicker();showPoints();};
 $('save-form').onsubmit=e=>{e.preventDefault();try{const copy=validatePlan(plan);copy.id=copy.id||crypto.randomUUID();copy.name=copy.name||`${copy.transfer.name} 환승`;plan=writePlan(storage,copy);renderSaved();message($('plan-message'),'저장했습니다. 출발지와 도착지별 노선 선택을 함께 보관합니다.');tell('경로 묶음을 이 브라우저에 저장했습니다.');}catch(err){message($('plan-message'),err.message,true);}};

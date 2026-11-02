@@ -36,43 +36,7 @@ export async function resolveStopIdentity(client,point,spec,ids=new Map(),check=
 export async function queryDirectLeg(client,from,to,{entries={},mapping,check=()=>{}}={}) {
   check();
   const routes=Object.entries(entries).flatMap(([id,entry])=>entry?.number&&Array.isArray(entry.stops)?[{id,...entry}]:[]);
-  if(!routes.length)throw new Error('정류장별 노선 매핑이 없습니다. 노선 매핑 준비를 먼저 실행하세요.');
+  if(!routes.length)throw new Error('저장된 경유 노선 정보가 없습니다. 경유 정보 데이터 연결이 필요합니다.');
   const confirmed=routes.flatMap(r=>r.stops);
   return {routes:findDirectRoutes(routes,from,to),examined:routes.length,unmatched:[from,to].filter(p=>!confirmed.some(s=>matchesStop(p,s))).map(p=>p.number),partial:!mapping?.complete,sourceFailed:false};
-}
-
-export async function loadMappingCatalog(client){
-  const {rows}=await client.get('routes','bus_location_all_common');
-  const numbers=new Map();
-  for(const row of rows){const number=f(row,'brtId'),extension=f(row,'brtClass');if(number)numbers.set(`${number}:${extension}`,{number,extension,done:false});}
-  if(!numbers.size)throw new Error('노선번호 목록이 비어 있습니다. 매핑을 시작하지 않았습니다.');
-  return {version:1,numbers:[...numbers.values()],routes:[],complete:false,createdAt:new Date().toISOString()};
-}
-export async function buildMappingBatch(client,mapping,entries,{limit=50,check=()=>{},save=()=>{},onProgress=()=>{}}={}){
-  let calls=0;
-  const get=async(operation,params)=>{check();++calls;onProgress(calls);return client.get('routes',operation,params);};
-  try{
-    while(calls<limit){
-      check();
-      // Consume discovered route IDs before looking up another route number.
-      const route=mapping.routes.find(r=>!r.done);
-      if(route){
-        if(!Array.isArray(entries[route.id]?.stops)||entries[route.id].date<Date.parse(mapping.createdAt||'1970-01-01')){
-          const {rows}=await get('bus_location_busstop_list_common',{brtStdid:route.id});check();
-          if(!rows.length)throw new Error(`${route.number}번 경유 정류장 응답이 비어 있습니다.`);
-          entries[route.id]={date:Date.now(),stops:rows.map(routeStop)};
-        }
-        Object.assign(entries[route.id],{number:route.number,direction:route.direction,destination:route.destination});route.done=true;save();continue;
-      }
-      const item=mapping.numbers.find(n=>!n.done);
-      if(!item){mapping.complete=true;mapping.completedAt=new Date().toISOString();save();break;}
-      const {rows}=await get('bus_location1_common',{brtId:item.number,brtClass:item.extension});check();
-      const ids=rows.flatMap(row=>{const id=f(row,'brtStdid');return id?[{id,number:f(row,'brtId')||item.number,direction:f(row,'brtDirection'),destination:[f(row,'brtSname'),f(row,'brtEname')].filter(Boolean).join(' → '),done:false}]:[];});
-      if(!ids.length)throw new Error(`${item.number}번 노선 ID 응답이 비어 있습니다.`);
-      for(const route of ids)if(!mapping.routes.some(r=>r.id===route.id))mapping.routes.push(route);
-      item.done=true;save();
-    }
-    if(mapping.numbers.every(n=>n.done)&&mapping.routes.every(r=>r.done)){mapping.complete=true;mapping.completedAt=new Date().toISOString();save();}
-    return {calls,complete:mapping.complete};
-  }catch(error){error.mappingCalls=calls;throw error;}
 }

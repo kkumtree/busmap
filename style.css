@@ -19,8 +19,8 @@ html,body{height:100%;overflow:hidden}
   --paper:#faf7f1;--sheet:#fdfbf5;--ink:#26241f;--ink-soft:#4a463c;
   --muted:#79736a;--faint:#a49c8d;--rule:#d9d2c2;--rule-ink:#c3baa6;
   --rose:#e18a8c;--rose-deep:#cf7377;--rose-ink:#7d3b3d;--gold:#b18a3d;--chip:#33312b;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  --serif:"Noto Serif KR","IBM Plex Mono",Georgia,serif;
+  --mono:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --serif:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --green:var(--ink);--line:var(--rule);
   color-scheme:light;font:15px/1.7 var(--serif);color:var(--ink)}
 body{background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -368,9 +368,6 @@ dialog p{font:400 12.5px/1.85 var(--serif);color:var(--muted)}
 .itinerary-hub b{font:600 14px/1.6 var(--serif)}
 .itinerary-hub small{font:400 12px/1.5 var(--mono);color:var(--muted)}
 .itinerary-add{width:100%;margin-top:6px;border-style:dashed;color:var(--muted)}
-.route-mapping{border:1px solid var(--rule-ink);padding:12px;margin:18px 0}
-.mapping-actions{display:flex;flex-wrap:wrap;gap:8px}
-.mapping-actions button{font-size:11px}
 
 .layer-icon-svg{width:22px;height:22px;display:block;fill:currentColor;stroke:var(--sheet);stroke-width:1;stroke-linejoin:round}
 .layer-toggle-button[aria-expanded=true] .layer-icon-svg{color:var(--paper);stroke:var(--ink)}
@@ -387,3 +384,9 @@ dialog p{font:400 12.5px/1.85 var(--serif);color:var(--muted)}
 .api-counters output:first-child{text-align:left;padding-left:0}
 .api-counters output:last-child{border-right:0;text-align:right;padding-right:0}
 @media(max-width:940px){.rail-bottom{display:flex;align-items:center;gap:14px;margin:0 0 0 auto;padding:0 10px;flex:0 0 auto}.api-counters{min-width:104px}.rail-bottom .rail-foot{margin-top:0}.api-counters output{padding:0 6px}}
+
+/* One service per row; numeric-only display with accessible names. */
+.api-counters{display:flex;flex-direction:column;align-items:stretch;font-family:var(--mono);gap:0}
+.api-counters output,.api-counters output:first-child,.api-counters output:last-child{display:block;text-align:right;border-right:0;border-bottom:1px solid var(--rule);padding:6px 0;font-variant-numeric:tabular-nums}
+.api-counters output:last-child{border-bottom:0}
+@media(max-width:940px){.api-counters{min-width:24px;font-size:9px;line-height:1}.api-counters output,.api-counters output:first-child,.api-counters output:last-child{padding:1px 0}}
