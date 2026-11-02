@@ -1,31 +1,22 @@
 const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let serial=0;
-export function networkLayout(plan) {
-  const height=Math.max(210,Math.max(plan.origins.length,plan.destinations.length)*90+30);
-  const branches=[];
-  for(const [kind,list]of [['origin',plan.origins],['destination',plan.destinations]])list.forEach((entry,index)=>{
-    branches.push({kind,index,entry,x:kind==='origin'?95:505,y:height*(index+1)/(list.length+1)});
-  });
-  return {height,branches};
-}
-export function networkView(plan,{selected='',onSelect=()=>{}}={}) {
-  const {height,branches}=networkLayout(plan),id='network-'+serial++;
-  const box=document.createElement('div');box.className='transfer-network';box.style.height=height+'px';
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox',`0 0 600 ${height}`);svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');
-  svg.innerHTML=`<defs><marker id="${id}" viewBox="0 0 6 6" refX="5.5" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0 L6 3 L0 6 Z" fill="#a49c8d"/></marker></defs>`;
-  // 직각 꺾임 연결선: 각진 문서 UI에 맞춰 수평 → 수직 → 수평으로만 잇습니다.
-  for(const branch of branches){const origin=branch.kind==='origin';
-    const y=Math.round(branch.y),mid=Math.round(height/2),startX=origin?180:380,cornerX=origin?200:400,endX=origin?220:420;
-    const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',`M${startX} ${y} H${cornerX} V${mid} H${endX}`);path.setAttribute('class','network-path '+(selected===`${branch.kind}:${branch.index}`?'selected':''));path.setAttribute('marker-end',`url(#${id})`);svg.append(path);
-    const hit=path.cloneNode();hit.setAttribute('class','network-path-hit');hit.removeAttribute('marker-end');hit.onclick=()=>onSelect(branch.kind,branch.index);svg.append(hit);
+export function networkView(plan,{selected='',onSelect=()=>{},editable=true}={}) {
+  const box=document.createElement('div');box.className='transfer-network itinerary-network';
+  for(const [kind,list,label]of [['origin',plan.origins,'1구간 · 출발지 → 환승지'],['destination',plan.destinations,'2구간 · 환승지 → 도착지']]){
+    if(kind==='destination'){
+      const hub=document.createElement('button');hub.type='button';hub.className='itinerary-hub';
+      hub.innerHTML=`<small>환승지</small><b>${escape(plan.transfer?.name||'환승지 지정')}</b>${plan.transfer?`<small>정류장 ${escape(plan.transfer.number)}</small>`:''}`;
+      hub.setAttribute('aria-label',plan.transfer?`환승지 ${plan.transfer.name} ${plan.transfer.number}`:'환승지 지정');hub.onclick=()=>onSelect('transfer',0);box.append(hub);
+    }
+    const section=document.createElement('section');section.className='itinerary-group';
+    const heading=document.createElement('h3');heading.textContent=label;section.append(heading);
+    list.forEach((entry,index)=>{
+      const button=document.createElement('button');button.type='button';button.className='itinerary-stop';button.setAttribute('aria-pressed',String(selected===`${kind}:${index}`));
+      button.setAttribute('aria-label',`${kind==='origin'?'출발':'도착'} ${entry.stop.name} ${entry.stop.number} 노선 선택`);
+      const routes=entry.routes.filter(r=>r.selected),numbers=[...new Set(routes.map(r=>r.number+'번'))];
+      button.innerHTML=`<span class="itinerary-stop-name"><b>${escape(entry.stop.name)}</b><small>${escape(entry.stop.number)}</small></span><span class="itinerary-routes">${numbers.length?numbers.map(escape).join(' · '):'노선 선택'} <span aria-hidden="true">→</span></span>`;
+      button.onclick=()=>onSelect(kind,index);section.append(button);
+    });
+    if(editable){const add=document.createElement('button');add.type='button';add.className='itinerary-add';add.textContent=kind==='origin'?'+ 출발지 추가':'+ 도착지 추가';add.onclick=()=>onSelect('add-'+kind,0);section.append(add);}box.append(section);
   }
-  box.append(svg);
-  for(const branch of branches){const key=`${branch.kind}:${branch.index}`,b=document.createElement('button');b.type='button';b.className=`network-node ${branch.kind} ${key===selected?'selected':''}`;b.style.left=branch.x/6+'%';b.style.top=branch.y/height*100+'%';
-    const routes=branch.entry.routes.filter(r=>r.selected),numbers=[...new Set(routes.map(r=>r.number))];
-    b.title=`${branch.entry.stop.name} · ${branch.entry.stop.number}`;b.setAttribute('aria-label',`${branch.kind==='origin'?'출발':'도착'} ${branch.entry.stop.name} ${branch.entry.stop.number} 구간 선택`);
-    b.innerHTML=`<span>${escape(branch.entry.stop.name)}</span><small>${numbers.length>2?escape(numbers[0])+' 외 '+(numbers.length-1)+'개':numbers.length?numbers.map(escape).join(' · '):'노선 선택'}</small>`;b.onclick=()=>onSelect(branch.kind,branch.index);box.append(b);
-  }
-  const hub=document.createElement('button');hub.type='button';hub.className='network-node hub';hub.style.left='50%';hub.style.top='50%';hub.innerHTML=`<small>환승지</small><span>${escape(plan.transfer?.name||'환승지 지정')}</span>${plan.transfer?.number?`<small class="hub-stop-id">ID : ${escape(plan.transfer.number)}</small>`:''}`;hub.setAttribute('aria-label',plan.transfer?`환승지 ${plan.transfer.name} ${plan.transfer.number}`:'환승지 지정');hub.onclick=()=>onSelect('transfer',0);box.append(hub);
-  for(const [kind,count,label,x]of [['origin',plan.origins.length,'출발지 추가',95],['destination',plan.destinations.length,'도착지 추가',505]])if(!count){const b=document.createElement('button');b.type='button';b.className='network-node empty';b.style.left=x/6+'%';b.style.top='50%';b.textContent='+ '+label;b.onclick=()=>onSelect('add-'+kind,0);box.append(b);}
   return box;
 }

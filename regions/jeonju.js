@@ -13,7 +13,6 @@ export default Object.freeze({
   mapStyle: './map-style.json',
   labels: Object.freeze({
     dong: './data/dong-labels.geojson',
-    apartments: './data/apartment-labels.geojson',
   }),
   // 데이터 출처 표기
   source: '전주시',

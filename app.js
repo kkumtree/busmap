@@ -1,6 +1,6 @@
 import * as ML from './vendor/maplibre-gl.mjs';
 import {createClient,latestStopDataset,normalizeStop,arrivalTime,field as f} from './api.js';
-import {queryDirectLeg,fetchStopSpec,resolveStopIdentity} from './targeted.js';
+import {queryDirectLeg,fetchStopSpec,resolveStopIdentity,loadMappingCatalog,buildMappingBatch} from './targeted.js';
 import {readJourneys} from './journey.js';
 import {networkView} from './network-view.js';
 import {shapeStore} from './shape-cache.js';
@@ -18,11 +18,16 @@ let plan=emptyPlan(),tab='plan',activeRole='origin',service={from:null,to:null},
 let keys={},version=0,loading=false,popup,toastTimer,specPromise,deleted;
 const client=createClient(source=>keys[source]||keys.default||'');
 const region=regionById(DEFAULT_REGION_ID);
+const labelLayers=[['show-dong','legal-dong-names'],['show-neighbourhoods','neighbourhood-names'],['show-schools','school-names'],['show-public','public-facility-names'],['show-rail','railway-station-names'],['show-terminals','bus-terminal-names'],['show-medical','medical-facility-names'],['show-parks','park-place-names']];
 const ids=new Map(),markers=[],pending=new Set();
 const cache=read('busmap.route-stops.v2',{}),entries=cache&&typeof cache==='object'&&!Array.isArray(cache)?cache:{};
+const savedMapping=read('busmap.route-mapping.v1',null);
+let mapping=savedMapping?.version===1&&Array.isArray(savedMapping.numbers)&&Array.isArray(savedMapping.routes)?savedMapping:null,mappingBusy=false,mappingController;
 const stopCache=read('busmap.stops.v1',{});
 let stops=Array.isArray(stopCache.stops)?stopCache.stops.filter(s=>s && typeof s.number==='string' && typeof s.name==='string'):[];
 const legacy=readJourneys(storage);
+// Reuse previously verified route memberships without making a request.
+for(const saved of readPlans(storage))for(const edge of [...saved.origins,...saved.destinations])for(const route of edge.routes)if(route.verified&&entries[route.routeId]?.stops)Object.assign(entries[route.routeId],{number:route.number,direction:route.direction||'',destination:route.destination||''});
 let datasetLabel='';
 function tell(s){$('notice').textContent=s;$('notice').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('notice').hidden=true,6500);}
 function message(el,s,bad=false){el.replaceChildren();const p=document.createElement('p');p.className=bad?'error':'small-note';p.textContent=s;el.append(p);}
@@ -51,7 +56,7 @@ class LayerToggleControl{
   onAdd(){
     const div=document.createElement('div');div.className='maplibregl-ctrl maplibregl-ctrl-group layer-toggle';
     const b=document.createElement('button');b.type='button';b.className='layer-toggle-button';b.title='레이어 선택';b.setAttribute('aria-label','지도 레이어 선택');b.setAttribute('aria-expanded','false');
-    b.innerHTML='<span class="layer-icon" aria-hidden="true"></span>';
+    b.innerHTML='<svg class="layer-icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.4 15.1 10.9 10.7a2.4 2.4 0 0 1 2.2 0l8.5 4.4c.9.5.9 1.7 0 2.2l-8.5 4.4a2.4 2.4 0 0 1-2.2 0l-8.5-4.4c-.9-.5-.9-1.7 0-2.2Z"/><path d="M2.4 7.1 10.9 2.7a2.4 2.4 0 0 1 2.2 0l8.5 4.4c.9.5.9 1.7 0 2.2l-8.5 4.4a2.4 2.4 0 0 1-2.2 0L2.4 9.3c-.9-.5-.9-1.7 0-2.2Z"/></svg>';
     b.onclick=()=>{if(this.panel.hidden)this.open();else this.close();};
     div.append(b);this.button=b;return div;
   }
@@ -61,22 +66,28 @@ class LayerToggleControl{
 }
 let map;
 try{
-  map=new ML.Map({container:'map',style:region.mapStyle,center:[...region.center],zoom:region.zoom,attributionControl:false,pitchWithRotate:false,dragRotate:false});
-  map.addControl(new ML.NavigationControl({showCompass:false}),'top-right');map.addControl(new LayerToggleControl($('layer-menu')),'top-right');map.addControl(new ML.AttributionControl({compact:false}),'bottom-right');
+  map=new ML.Map({container:'map',style:region.mapStyle,center:[...region.center],zoom:region.zoom,attributionControl:false,pitchWithRotate:false,dragRotate:false,locale:{'GeolocateControl.FindMyLocation':'현재 위치로 이동','GeolocateControl.LocationNotAvailable':'현재 위치를 확인할 수 없습니다'}});
+  map.addControl(new ML.NavigationControl({showCompass:false}),'top-right');map.addControl(new LayerToggleControl($('layer-menu')),'top-right');const locate=new ML.GeolocateControl({positionOptions:{enableHighAccuracy:false,timeout:10000},trackUserLocation:false,showAccuracyCircle:true,fitBoundsOptions:{maxZoom:15.5}});map.addControl(locate,'bottom-right');locate.on('error',()=>tell('현재 위치를 확인하지 못했습니다. 브라우저 위치 권한과 기기 위치 설정을 확인하세요.'));map.addControl(new ML.AttributionControl({compact:false}),'bottom-right');
   map.on('error',()=>{$('map-error').textContent='배경지도 연결을 확인하세요. 정류장 선택과 로컬 저장은 계속 사용할 수 있습니다.';$('map-error').hidden=false;});
   map.on('load',()=>{
     map.addSource('route-sections',{type:'geojson',data:routeFeatures});
     map.addLayer({id:'route-section-halo',type:'line',source:'route-sections',paint:{'line-color':'#fff','line-width':8,'line-opacity':.85}});
     map.addLayer({id:'route-section-lines',type:'line',source:'route-sections',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':['get','color'],'line-width':4,'line-offset':['get','offset']}});
     map.addLayer({id:'route-section-numbers',type:'symbol',source:'route-sections',layout:{'symbol-placement':'line','text-field':['get','number'],'text-font':['Noto Sans Regular'],'text-size':12},paint:{'text-color':'#214f36','text-halo-color':'#fff','text-halo-width':2}});
-    map.addSource('bus-stops',{type:'geojson',data:features()});
+    map.addSource('bus-stops',{type:'geojson',data:features(),cluster:true,clusterRadius:75,clusterMaxZoom:14});
+    const stopVisibility=$('stop-picker').open?'visible':'none';
+    map.addLayer({id:'stop-clusters',type:'circle',source:'bus-stops',filter:['has','point_count'],layout:{visibility:stopVisibility},paint:{'circle-color':'#fdfbf5','circle-stroke-color':'#79736a','circle-stroke-width':1.2,'circle-radius':['step',['get','point_count'],18,100,23,500,28]}});
+    map.addLayer({id:'stop-cluster-count',type:'symbol',source:'bus-stops',filter:['has','point_count'],layout:{visibility:stopVisibility,'text-field':['concat',['get','point_count_abbreviated'],'곳'],'text-font':['Noto Sans Regular'],'text-size':12},paint:{'text-color':'#26241f'}});
+    map.on('click','stop-clusters',async e=>{const feature=e.features?.[0];if(!feature)return;try{const zoom=await map.getSource('bus-stops').getClusterExpansionZoom(feature.properties.cluster_id);map.easeTo({center:feature.geometry.coordinates,zoom:Math.max(zoom,map.getZoom()+1)});}catch{tell('정류장 묶음을 확대하지 못했습니다. 지도 + 버튼을 이용하세요.');}});
+    for(const layer of ['stop-clusters','stop-cluster-count']){map.on('mouseenter',layer,()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave',layer,()=>map.getCanvas().style.cursor='');}
     // 점 대신 테마에 맞춘 네모 버스 아이콘을 씽니다.
     const busCanvas=document.createElement('canvas');busCanvas.width=busCanvas.height=40;const busCtx=busCanvas.getContext('2d');
     busCtx.fillStyle='#fdfbf5';busCtx.fillRect(0,0,40,40);busCtx.strokeStyle='#26241f';busCtx.lineWidth=4;busCtx.strokeRect(2,2,36,36);
     busCtx.fillStyle='#26241f';busCtx.fillRect(9,11,22,15);busCtx.fillStyle='#fdfbf5';busCtx.fillRect(12,14,7,6);busCtx.fillRect(21,14,7,6);
     busCtx.fillStyle='#26241f';busCtx.fillRect(11,27,5,4);busCtx.fillRect(24,27,5,4);
     map.addImage('bus-square',busCtx.getImageData(0,0,40,40),{pixelRatio:2});
-    map.addLayer({id:'bus-stops',type:'symbol',source:'bus-stops',layout:{visibility:$('stop-picker').open?'visible':'none','icon-image':'bus-square','icon-size':['interpolate',['linear'],['zoom'],10,.55,14,.8,17,1.05],'icon-allow-overlap':true,'icon-ignore-placement':true}});
+    map.addLayer({id:'bus-stops',type:'symbol',source:'bus-stops',minzoom:14,filter:['!', ['has','point_count']],layout:{visibility:$('stop-picker').open?'visible':'none','icon-image':'bus-square','icon-size':['interpolate',['linear'],['zoom'],10,.55,14,.8,17,1.05],'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-padding':5}});
+    for(const layer of labelLayers.map(([,layer])=>layer)){map.on('click',layer,e=>{const feature=e.features?.[0];if(feature?.geometry.type==='Point')map.flyTo({center:feature.geometry.coordinates,zoom:layer==='legal-dong-names'?15:16.5});});map.on('mouseenter',layer,()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave',layer,()=>map.getCanvas().style.cursor='');}
     map.on('click','bus-stops',e=>{const s=stops[Number(e.features?.[0]?.properties.index)];if(s)showStop(s);});
     map.on('mouseenter','bus-stops',()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave','bus-stops',()=>map.getCanvas().style.cursor='');
   });
@@ -119,7 +130,7 @@ function renderPicker(){
 }
 function renderSearch(){
   const q=$('stop-search').value.trim().toLowerCase(),box=$('stop-results');box.replaceChildren();
-  if(!q){message(box,stops.length?`${stops.length.toLocaleString()}개 정류장 · 지도에서 선택하거나 검색하세요.`:'저장된 정류장이 없습니다. 불러오기 또는 번호 직접 추가를 이용하세요.');return;}
+  if(!q){message(box,stops.length?`${stops.length.toLocaleString()}개 정류장 · 숫자 묶음을 눌러 확대하거나 검색하세요.`:'저장된 정류장이 없습니다. 불러오기 또는 번호 직접 추가를 이용하세요.');return;}
   const found=stops.filter(s=>`${s.name} ${s.number}`.toLowerCase().includes(q));
   for(const s of found.slice(0,30)){const b=document.createElement('button');b.className='search-item';b.innerHTML=`<span>${stopLabel(s)}</span>${meta(s)}`;b.onclick=()=>{addPoint(activeRole,s);focusStop(s);};box.append(b);}
   if(!found.length)message(box,'검색 결과가 없습니다. 번호로 직접 추가할 수 있습니다.');
@@ -144,17 +155,6 @@ function renderPlan(){
     if(kind.startsWith('add-')){pick(kind.slice(4));return;}
     selectConnection(kind,index);
   }}));
-  const picker=$('connection-picker');picker.replaceChildren();
-  if(connections.length){
-    const title=document.createElement('h3');title.textContent='구간별 노선 선택';picker.append(title);
-    for(const {kind,entry,index}of connections){
-      const button=document.createElement('button');button.type='button';button.className='connection-choice';
-      button.setAttribute('aria-pressed',String(focused===`${kind}:${index}`));button.setAttribute('aria-controls','connection-detail');
-      const endpoints=kind==='origin'?`${entry.stop.name} → ${plan.transfer?.name||'환승지 미지정'}`:`${plan.transfer?.name||'환승지 미지정'} → ${entry.stop.name}`;
-      button.innerHTML=`<span><small>${kind==='origin'?'1구간':'2구간'}</small><b>${esc(endpoints)}</b></span><span class="connection-action">${entry.routes.length?`노선 ${entry.routes.filter(r=>r.selected).length}/${entry.routes.length}개`:'노선 선택'} →</span>`;
-      button.onclick=()=>selectConnection(kind,index);picker.append(button);
-    }
-  }
   $('connection-detail').replaceChildren();
   if(focused){const [kind,raw]=focused.split(':'),group=kind==='origin'?plan.origins:plan.destinations,entry=group[Number(raw)];if(entry)renderConnection(kind,entry,group);else focused='';}
 }
@@ -168,7 +168,7 @@ function renderConnection(kind,entry,group){
   card.append(routeBox);const tools=document.createElement('div');tools.className='edge-tools';const query=document.createElement('button');query.textContent=pending.has(entry)?'조회 중…':'후보 노선 조회';query.disabled=!plan.transfer||pending.has(entry);query.onclick=()=>queryEdge(kind,entry);if(!plan.transfer){const choose=document.createElement('button');choose.type='button';choose.textContent='환승지 지정';choose.onclick=()=>pick('transfer');tools.append(choose);}query.type='button';tools.append(query);card.append(tools);
   const note=document.createElement('p');note.className=entry.error?'error':'small-note';note.textContent=entry.error||entry.note||'이 버튼을 누를 때만 후보 노선과 형상을 조회합니다. 저장된 형상은 재사용합니다.';card.append(note);box.append(card);
 }
-$('add-origin').onclick=()=>pick('origin');$('add-destination').onclick=()=>pick('destination');$('change-transfer').onclick=()=>pick('transfer');
+
 function clearLines(){++geometryVersion;routeFeatures={type:'FeatureCollection',features:[]};map?.getSource('route-sections')?.setData(routeFeatures);$('map-line-status').hidden=true;}
 async function showEdgeLines(p,kind,entry,fit=false){
   clearLines();const token=geometryVersion,from=kind==='origin'?entry.stop:p.transfer,to=kind==='origin'?p.transfer:entry.stop;if(!from||!to)return;
@@ -182,27 +182,53 @@ async function showEdgeLines(p,kind,entry,fit=false){
   if(fit){if(features.length&&map){const bounds=new ML.LngLatBounds();for(const feature of features)for(const p of feature.geometry.coordinates)bounds.extend(p);map.fitBounds(bounds,{padding:{top:90,left:70,right:70,bottom:70},maxZoom:15.5});}else focusStop(entry.stop);}
   $('map-line-status').hidden=false;$('map-line-status').textContent=features.length?`선택 구간 ${features.length}개 노선 · 저장된 선형${missing?' · 미확보 '+missing+'개':''}`:entry.routes.filter(r=>r.selected).map(r=>`${r.number}번: ${geometryState(r).label}`).join(' / ')||'표시할 노선을 선택하세요.';
 }
-for(const [id,layer]of [['show-dong','legal-dong-names'],['show-apartments','apartment-names']])$(id).onchange=e=>{if(map?.getLayer(layer))map.setLayoutProperty(layer,'visibility',e.target.checked?'visible':'none');};
+for(const [id,layer]of labelLayers)$(id).onchange=e=>{if(map?.getLayer(layer))map.setLayoutProperty(layer,'visibility',e.target.checked?'visible':'none');};
 
 async function queryEdge(kind,entry){
-  if(pending.has(entry)||!plan.transfer||!requireKeys(['stops','routes','realtime','transfer']))return;
+  if(pending.has(entry)||!plan.transfer)return;
   const token=version;pending.add(entry);entry.error='';renderPlan();
-  try{const from=kind==='origin'?entry.stop:plan.transfer,to=kind==='origin'?plan.transfer:entry.stop;await hydrate(from);await hydrate(to);if(token!==version)return;
-    const result=await queryDirectLeg(client,from,to,{ids,entries,getSpec,check:()=>{if(token!==version)throw new DOMException('변경','AbortError');}});if(token!==version)return;
+  try{const from=kind==='origin'?entry.stop:plan.transfer,to=kind==='origin'?plan.transfer:entry.stop;
+    const result=await queryDirectLeg(client,from,to,{entries,mapping,check:()=>{if(token!==version)throw new DOMException('변경','AbortError');}});if(token!==version)return;
+    if(!result.partial)entry.routes=entry.routes.filter(old=>result.routes.some(r=>r.routeId===old.routeId));
     for(const r of result.routes){const old=entry.routes.find(x=>x.routeId===r.routeId||(!x.routeId&&x.number===r.number));const checked=old?old.selected:false;const route=cleanRoute({...old,...r,geometryStatus:old?.geometryStatus||'not-requested',verified:true,selected:checked});if(old)Object.assign(old,route);else entry.routes.push(route);}
     if(result.routes[0]){from.standardId=result.routes[0].fromStandardId;to.standardId=result.routes[0].toStandardId;}
     let geometryFailures=0;
     for(const r of entry.routes.filter(r=>result.routes.some(x=>x.routeId===r.routeId))){
       if(token!==version)return;
       if(r.segment)continue;
+      if(!(keys.routes||keys.default)||!validCoordinates(from)||!validCoordinates(to)){r.geometryStatus='not-requested';continue;}
       try{const shape=await getShapeOnQuery(client,shapes,r.routeId);if(token!==version)return;const section=clipShape(shape,from,to,r);r.shapeKey=r.routeId;r.segment=section.segment;r.geometryStatus=section.status;r.geometryMessage=section.message||'';if(!r.segment)geometryFailures++;}
       catch(error){if(token!==version||error.name==='AbortError')return;r.geometryStatus='request-error';r.geometryMessage=error.message;geometryFailures++;}
     }
-    entry.note=`후보 ${result.examined}개 확인 · 저장된 형상은 재사용합니다.${geometryFailures?' 선형 미확보 '+geometryFailures+'개.':''}`;
+    entry.note=`저장된 노선 ${result.examined}개에서 경유 순서를 확인했습니다.${result.partial?' 전체 매핑 준비 전이므로 일부 노선이 누락될 수 있습니다.':''}${!result.routes.length?' 이 구간에 맞는 노선이 없습니다.':''}${geometryFailures?' 선형 미확보 '+geometryFailures+'개.':''}`;
     showEdgeLines(plan,kind,entry);
     try{storage.setItem('busmap.route-stops.v2',JSON.stringify(entries));}catch{}
-  }catch(e){if(token===version&&e.name!=='AbortError')entry.error=e.message;}finally{pending.delete(entry);if(token===version)renderPlan();}
+  }catch(e){if(token===version&&e.name!=='AbortError'){entry.error=e.message;if(!Object.values(entries).some(e=>e.number))$('route-mapping').open=true;}}finally{pending.delete(entry);if(token===version)renderPlan();}
 }
+const saveMapping=()=>{storage.setItem('busmap.route-stops.v2',JSON.stringify(entries));storage.setItem('busmap.route-mapping.v1',JSON.stringify(mapping));renderMapping();};
+function renderMapping(){
+  const status=$('mapping-status');
+  status.textContent=mapping?`${mapping.routes.filter(r=>r.done).length}개 노선 경유정보 저장 · 번호 확인 ${mapping.numbers.filter(n=>n.done).length}/${mapping.numbers.length}${mapping.complete?' · 전체 준비 완료':' · 일부 준비됨'}`:'아직 매핑이 없습니다. 노선번호 목록을 먼저 확인하세요.';
+  $('mapping-catalog').disabled=mappingBusy||Boolean(mapping&&!mapping.complete);
+  $('mapping-catalog').textContent=mapping?.complete?'노선 매핑 새로 준비 (목록 1회)':'노선번호 목록 확인 (1회)';
+  $('mapping-build').disabled=mappingBusy||!mapping||mapping.complete;
+  $('mapping-build').textContent=mapping?.routes.length?'매핑 이어서 준비 (최대 50회)':'매핑 준비 (최대 50회)';
+  $('mapping-stop').hidden=!mappingBusy;
+}
+$('mapping-catalog').onclick=async()=>{
+  if(mappingBusy||(mapping&&!mapping.complete)||!requireKeys(['routes']))return;mappingBusy=true;renderMapping();
+  try{mapping=await loadMappingCatalog(client);saveMapping();$('mapping-message').textContent=`노선번호 ${mapping.numbers.length}개를 확인했습니다. 다음 단계는 번호별 ID와 경유 정류장을 순차 저장합니다. 버튼 한 번에 최대 50회이며 실패 시 즉시 중단합니다.`;}
+  catch(error){$('mapping-message').textContent=error.message;}finally{mappingBusy=false;renderMapping();}
+};
+$('mapping-build').onclick=async()=>{
+  if(mappingBusy||!mapping||mapping.complete||!requireKeys(['routes']))return;mappingBusy=true;mappingController=new AbortController();renderMapping();
+  const batchClient={get:(source,operation,params)=>client.get(source,operation,params)};
+  try{const result=await buildMappingBatch(batchClient,mapping,entries,{limit:50,check:()=>{if(mappingController.signal.aborted)throw new DOMException('사용자 중단','AbortError');},save:saveMapping,onProgress:calls=>{$('mapping-message').textContent=`이번 작업 ${calls}/50회 요청 · 오류나 중단 시 자동 재시도하지 않습니다.`;}});$('mapping-message').textContent=`이번 작업 ${result.calls}회 요청. ${result.complete?'전체 매핑을 저장했습니다.':'여기서 멈췄습니다. 필요할 때 이어서 준비하세요.'}`;}
+  catch(error){$('mapping-message').textContent=error.name==='AbortError'?'준비를 중단했습니다. 저장된 결과는 유지합니다.':`준비 중단: ${error.message} (이번 ${error.mappingCalls||0}회). 자동 재시도하지 않습니다.`;}
+  finally{mappingBusy=false;renderMapping();renderPlan();}
+};
+$('mapping-stop').onclick=()=>{mappingController?.abort();client.reset();};
+renderMapping();
 $('plan-name').oninput=e=>plan.name=e.target.value;
 $('new-plan').onclick=()=>{edit();plan=emptyPlan();clearEntry();renderPlan();renderPicker();showPoints();};
 $('save-form').onsubmit=e=>{e.preventDefault();try{const copy=validatePlan(plan);copy.id=copy.id||crypto.randomUUID();copy.name=copy.name||`${copy.transfer.name} 환승`;plan=writePlan(storage,copy);renderSaved();message($('plan-message'),'저장했습니다. 출발지와 도착지별 노선 선택을 함께 보관합니다.');tell('경로 묶음을 이 브라우저에 저장했습니다.');}catch(err){message($('plan-message'),err.message,true);}};
@@ -215,11 +241,11 @@ function renderSavedSummary(saved){
 }
 function renderSaved(){
   const saved=readPlans(storage);$('saved-count').textContent=saved.length;$('saved-list').replaceChildren();renderSavedSummary(saved);if(!saved.length)message($('saved-list'),'아직 저장한 묶음이 없습니다. 환승지 지정 탭에서 만들어 보세요.');
-  for(const p of saved){const card=document.createElement('article');card.className='saved-card';card.innerHTML=`<h3>${esc(p.name)}</h3><p>출발 ${p.origins.length}곳 → <b>${esc(p.transfer.name)}</b> → 도착 ${p.destinations.length}곳</p><div class="saved-actions"><button aria-expanded="false">연결도 펼치기</button><button class="primary">도착정보 조회</button><button>편집</button><button>삭제</button></div>`;
+  for(const p of saved){const card=document.createElement('article');card.className='saved-card';card.innerHTML=`<h3>${esc(p.name)}</h3><p>출발 ${p.origins.length}곳 → <b>${esc(p.transfer.name)}</b> → 도착 ${p.destinations.length}곳</p><div class="saved-actions"><button aria-expanded="false">경로 펼치기</button><button class="primary">도착정보 조회</button><button>편집</button><button>삭제</button></div>`;
     const diagram=document.createElement('div');diagram.hidden=true;diagram.className='saved-diagram';card.append(diagram);
     const [toggle,query,editButton,remove]=card.querySelectorAll('.saved-actions button');
-    let selected='';const draw=()=>{diagram.replaceChildren(networkView(p,{selected,onSelect:(kind,index)=>{if(kind==='transfer'){focusStop(p.transfer);return;}if(kind.startsWith('add-'))return;selected=`${kind}:${index}`;viewedPlan=p;showPoints();draw();const e=(kind==='origin'?p.origins:p.destinations)[index];messageFooter(diagram,`${e.stop.name} · ${e.stop.number} / ${e.routes.filter(r=>r.selected).map(r=>r.number+'번').join(' · ')}`);showEdgeLines(p,kind,e,true);}}));};
-    toggle.onclick=()=>{diagram.hidden=!diagram.hidden;toggle.setAttribute('aria-expanded',String(!diagram.hidden));toggle.textContent=diagram.hidden?'연결도 펼치기':'연결도 접기';if(!diagram.hidden){viewedPlan=p;draw();showPoints(true);}};
+    let selected='';const draw=()=>{diagram.replaceChildren(networkView(p,{selected,editable:false,onSelect:(kind,index)=>{if(kind==='transfer'){focusStop(p.transfer);return;}if(kind.startsWith('add-'))return;selected=`${kind}:${index}`;viewedPlan=p;showPoints();draw();const e=(kind==='origin'?p.origins:p.destinations)[index];messageFooter(diagram,`${e.stop.name} · ${e.stop.number} / ${e.routes.filter(r=>r.selected).map(r=>r.number+'번').join(' · ')}`);showEdgeLines(p,kind,e,true);}}));};
+    toggle.onclick=()=>{diagram.hidden=!diagram.hidden;toggle.setAttribute('aria-expanded',String(!diagram.hidden));toggle.textContent=diagram.hidden?'경로 펼치기':'경로 접기';if(!diagram.hidden){viewedPlan=p;draw();showPoints(true);}};
     query.onclick=()=>querySaved(p,query);editButton.onclick=()=>{edit();plan=structuredClone(p);renderPlan();selectTab('plan');showPoints(true);};remove.onclick=()=>{try{storage.setItem(PLANS_KEY,JSON.stringify(readPlans(storage).filter(x=>x.id!==p.id)));deleted=p;$('undo-delete').hidden=false;renderSaved();}catch(e){tell(e.message);}};$('saved-list').append(card);
   }
   $('legacy-section').hidden=!legacy.length;$('legacy-list').innerHTML=legacy.map(j=>`<p class="small-note"><b>${esc(j.name)}</b><br>${[j.points.from,j.points.via,j.points.to].filter(Boolean).map(s=>`${esc(s.name)} · ${esc(s.number)}`).join(' → ')}<br>${j.routes.map(r=>esc(r.number)+'번').join(' → ')} · 원래 저장 데이터는 유지됩니다.</p>`).join('');
@@ -313,4 +339,4 @@ $('load-data').onclick=async()=>{
 
 renderPlan();renderServicePoints();renderSaved();renderPicker();renderKeyState();applyRegion(document,region);maybeWarnStoredKeys();
 
-$('stop-picker').addEventListener('toggle',()=>{if(map?.getLayer('bus-stops'))map.setLayoutProperty('bus-stops','visibility',$('stop-picker').open&&tab!=='saved'?'visible':'none');});
+$('stop-picker').addEventListener('toggle',()=>{for(const layer of ['bus-stops','stop-clusters','stop-cluster-count'])if(map?.getLayer(layer))map.setLayoutProperty(layer,'visibility',$('stop-picker').open&&tab!=='saved'&&tab!=='about'?'visible':'none');});

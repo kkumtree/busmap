@@ -27,7 +27,7 @@ jobs:
           cp index.html style.css app.js api.js journey.js targeted.js plan-model.js map-style.json .nojekyll _site/
           cp route-geometry.js shape-cache.js network-view.js _site/
           mkdir _site/data
-          cp data/apartment-labels.geojson data/dong-labels.geojson _site/data/
+          cp data/dong-labels.geojson _site/data/
           mkdir _site/regions
           cp regions/index.js regions/jeonju.js _site/regions/
           cp -r vendor _site/

@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseShape,clipShape,getShapeOnQuery,cleanLine,geometryState} from '../route-geometry.js';
-import {networkLayout} from '../network-view.js';
 import {writePlan,readPlans} from '../plan-model.js';
 const rows=[127.10,127.11,127.12,127.13].map((x,i)=>({linkId:'a',vtxSeq:String(i),vtxx:String(x),vtxy:'35.83'}));
 const from={number:'a',name:'출발',lon:127.105,lat:35.83},to={number:'b',name:'환승',lon:127.125,lat:35.83};
@@ -31,10 +30,6 @@ test('saved sections survive local restore without fetching shapes',()=>{
   const storage={value:null,getItem(){return this.value;},setItem(k,v){this.value=v;}};writePlan(storage,p);const saved=readPlans(storage)[0];
   assert.deepEqual(saved.origins[0].routes[0].segment,segment);assert.equal(saved.origins[0].routes[0].shapeKey,'r');
   assert.equal(cleanLine({type:'LineString',coordinates:[[Infinity,0],[1,2]]}),null);
-});
-test('hub layout stays left/center/right, deterministic for multiple stops',()=>{
-  const p={origins:[{},{}],destinations:[{},{}]};const a=networkLayout(p);assert.deepEqual(a,networkLayout(p));assert.equal(a.branches.length,4);
-  assert.ok(a.branches.filter(x=>x.kind==='origin').every(x=>x.x<300));assert.ok(a.branches.filter(x=>x.kind==='destination').every(x=>x.x>300));
 });
 
 test('legacy missing geometry is not reported as an API error, and new failures retain their reason',()=>{

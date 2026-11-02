@@ -52,6 +52,14 @@ class Handler(PublicHandler):
         if path == "/gw/nosun/bus_location_all_common":
             rows = [{"brtStdid": r, "brtId": r, "brtDirection": "1", "brtEname": "테스트 종점"} for r in ROUTES]
             return self.send(json.dumps({"code": "0", "routeList": {"list": rows}}, ensure_ascii=False))
+        if path == "/gw/nosun/bus_location1_common":
+            route = query.get("brtId", [""])[0]
+            rows = [{"brtStdid":route,"brtId":route,"brtSname":"테스트 시작","brtEname":"테스트 종점"}] if route in ROUTES else []
+            return self.send(json.dumps({"code":"0","routeList":{"list":rows}}, ensure_ascii=False))
+        if path == "/gw/nosun/bus_nosun_drawing_common":
+            route = query.get("brtStdid", [""])[0]
+            rows = [{"linkId":"fixture","vtxSeq":str(i+1),"vtxx":POINTS[n]["경도"],"vtxy":POINTS[n]["위도"]} for i,n in enumerate(ROUTES.get(route,[]))]
+            return self.send(json.dumps({"code":"0","routeList":{"list":rows}}, ensure_ascii=False))
         if path == "/gw/nosun/bus_location_busstop_list_common":
             route = query.get("brtStdid", [""])[0]
             rows = [{"stopKname": POINTS[n]["정류장명"], "stopId": str(n+1), "stopStandardid": "std-"+str(n+1), "brsSeqno": str(i+1)} for i, n in enumerate(ROUTES[route])]

@@ -337,12 +337,6 @@ dialog p{font:400 12.5px/1.85 var(--serif);color:var(--muted)}
 .layer-toggle .layer-toggle-button{display:grid;place-items:center;width:29px;height:29px;margin:0;padding:0;border:0;border-radius:0;background:transparent}
 .layer-toggle .layer-toggle-button:hover{background:#f2ece0}
 .layer-toggle .layer-toggle-button[aria-expanded="true"]{background:var(--ink)}
-.layer-icon{position:relative;display:block;width:16px;height:16px}
-.layer-icon::before,.layer-icon::after{content:"";position:absolute;top:4px;width:9px;height:9px;border:1px solid var(--ink);background:var(--sheet);transform:rotate(45deg)}
-.layer-icon::before{left:0}
-.layer-icon::after{left:6px;background:var(--ink)}
-.layer-toggle .layer-toggle-button[aria-expanded="true"] .layer-icon::before{border-color:var(--paper);background:var(--paper)}
-.layer-toggle .layer-toggle-button[aria-expanded="true"] .layer-icon::after{border-color:var(--paper);background:transparent}
 .rail-foot{margin-bottom:2px}
 .network-node.hub .hub-stop-id{font:400 12px/1.4 var(--mono);letter-spacing:.2px}
 #dataset-label{background:none;border:0;border-bottom:1px solid transparent;border-radius:0;padding:2px 0;color:var(--muted);font:400 12px/1.4 var(--mono);letter-spacing:-.2px;cursor:pointer}
@@ -351,17 +345,37 @@ dialog p{font:400 12.5px/1.85 var(--serif);color:var(--muted)}
 #dataset-label.needs-key:hover{color:var(--ink);border-bottom-color:var(--ink)}
 
 /* Keep route selection visible in the document column. */
-.connection-picker{margin:22px 0 12px;border-top:1px solid var(--ink)}
-.connection-picker:empty{display:none}
-.connection-picker h3{font:500 12px/1.5 var(--mono);color:var(--muted);margin:12px 0 8px}
-.connection-choice{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;margin-top:6px;padding:11px 12px;letter-spacing:0}
-.connection-choice[aria-pressed=true]{border-color:var(--ink);background:#f3eee2;box-shadow:inset 3px 0 var(--rose)}
-.connection-choice>span:first-child{min-width:0}
-.connection-choice small{display:block;font:400 12px/1.4 var(--mono);color:var(--muted);margin-bottom:4px}
-.connection-choice b{display:block;font:600 12.5px/1.7 var(--serif);overflow-wrap:anywhere}
-.connection-action{flex:0 0 auto;font:500 12px/1.5 var(--mono);color:var(--ink-soft)}
 #connection-detail{scroll-margin:16px}
 .edge-tools{gap:8px;flex-wrap:wrap}
 .route-choices{flex-direction:column;flex-wrap:nowrap}
 .route-check{width:100%}
 .route-check small{max-width:none}
+
+/* Map layer descriptions. */
+.map-label-options{max-width:245px}
+.layer-note{font:400 11px/1.7 var(--serif);color:var(--muted);margin:8px 0 0;max-width:210px}
+/* Document-style itinerary: unbounded N → 1 → N without crossing lines. */
+.itinerary-network{height:auto;margin:20px 0;display:flex;flex-direction:column;gap:14px}
+.itinerary-group{border-top:1px solid var(--rule-ink)}
+.itinerary-group h3{font:500 12px/1.5 var(--mono);color:var(--muted);margin:12px 0 8px}
+.itinerary-stop{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;margin-top:6px;padding:11px 12px;letter-spacing:0}
+.itinerary-stop[aria-pressed=true]{border-color:var(--ink);background:#f3eee2;box-shadow:inset 3px 0 var(--rose)}
+.itinerary-stop-name{min-width:0}
+.itinerary-stop-name b{display:block;font:600 13px/1.7 var(--serif);overflow-wrap:anywhere}
+.itinerary-stop-name small{display:block;font:400 12px/1.5 var(--mono);color:var(--muted)}
+.itinerary-routes{flex:0 1 42%;font:500 12px/1.7 var(--mono);text-align:right;overflow-wrap:anywhere}
+.itinerary-hub{align-self:stretch;display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:8px;background:#f3eee2;border-color:var(--ink);padding:14px}
+.itinerary-hub b{font:600 14px/1.6 var(--serif)}
+.itinerary-hub small{font:400 12px/1.5 var(--mono);color:var(--muted)}
+.itinerary-add{width:100%;margin-top:6px;border-style:dashed;color:var(--muted)}
+.route-mapping{border:1px solid var(--rule-ink);padding:12px;margin:18px 0}
+.mapping-actions{display:flex;flex-wrap:wrap;gap:8px}
+.mapping-actions button{font-size:11px}
+
+.layer-icon-svg{width:22px;height:22px;display:block;fill:currentColor;stroke:var(--sheet);stroke-width:1;stroke-linejoin:round}
+.layer-toggle-button[aria-expanded=true] .layer-icon-svg{color:var(--paper);stroke:var(--ink)}
+#layer-menu{max-height:min(75dvh,650px);overflow:auto}
+#layer-menu label{padding:6px 0}
+#map-line-status{right:55px}
+@media(max-width:940px){.maplibregl-ctrl-bottom-right{bottom:calc(48dvh + 8px)}}
+@media(max-width:560px){.maplibregl-ctrl-bottom-right{bottom:calc(52dvh + 8px)}}
