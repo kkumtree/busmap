@@ -13,7 +13,9 @@ export function cleanRoute(r) {
   return {number:String(r.number).trim(),routeId:String(r.routeId||''),direction:String(r.direction||''),destination:String(r.destination||''),
     fromStandardId:String(r.fromStandardId||''),toStandardId:String(r.toStandardId||''),
     fromSeq:Number.isFinite(r.fromSeq)?r.fromSeq:null,toSeq:Number.isFinite(r.toSeq)?r.toSeq:null,
-    verified:r.verified===true,selected:r.selected!==false,shapeKey:String(r.shapeKey||''),segment:cleanLine(r.segment),geometryStatus:String(r.geometryStatus||'missing'),geometryMessage:String(r.geometryMessage||'').slice(0,240)};
+    verified:r.verified===true,selected:r.selected!==false,shapeKey:String(r.shapeKey||''),segment:cleanLine(r.segment),geometryStatus:String(r.geometryStatus||'missing'),geometryMessage:String(r.geometryMessage||'').slice(0,240),
+    geometrySource:String(r.geometrySource||''),geometryVersion:Number.isFinite(r.geometryVersion)?r.geometryVersion:0,
+    geometryDiagnostics:r.geometryDiagnostics?{reason:String(r.geometryDiagnostics.reason||''),choiceCount:Number(r.geometryDiagnostics.choiceCount)||0,linkCount:Number(r.geometryDiagnostics.linkCount)||0,anchorCount:Number(r.geometryDiagnostics.anchorCount)||0,maxGapMeters:Number(r.geometryDiagnostics.maxGapMeters)||0}:null};
 }
 export function normalizePlan(plan) {
   return {id:String(plan.id||''),name:String(plan.name||'').trim().slice(0,80),transfer:plan.transfer?cleanPoint(plan.transfer):null,

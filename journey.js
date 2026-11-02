@@ -5,7 +5,15 @@ const nameKey = value => String(value ?? '').trim().replace(/\s+/g, ' ');
 export const stopKey = stop => `${stop.number}:${stop.name}`;
 
 export function routeStop(row) {
-  return {name:f(row,'stopKname'), number:f(row,'stopId'), standardId:f(row,'stopStandardid'), seq:f(row,'brsSeqno') === '' ? NaN : Number(f(row,'brsSeqno'))};
+  return {name:f(row,'stopKname'), number:f(row,'stopId'), standardId:f(row,'stopStandardid'), nodeId:f(row,'bnodeId'), seq:f(row,'brsSeqno') === '' ? NaN : Number(f(row,'brsSeqno'))};
+}
+// Use already loaded positions only; never fan out into per-stop requests.
+export function sectionAnchors(routeStops,localStops,route) {
+  return (routeStops||[]).filter(s=>s.seq>route.fromSeq&&s.seq<route.toSeq).sort((a,b)=>a.seq-b.seq).flatMap(s=>{
+    const matches=localStops.filter(p=>matchesStop(p,s)&&Number.isFinite(p.lon)&&Number.isFinite(p.lat)&&p.lon>120&&p.lon<135&&p.lat>30&&p.lat<40&&(!p.standardId||!s.standardId||p.standardId===s.standardId));
+    const positions=new Map(matches.map(p=>[`${p.lon}:${p.lat}`,p]));
+    return positions.size===1?[{...positions.values().next().value,seq:s.seq}]:[];
+  });
 }
 export function matchesStop(point, stop) {
   // File stop numbers are never used as standard IDs. Match both the public
