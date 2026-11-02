@@ -330,3 +330,18 @@ dialog p{font:400 12.5px/1.85 var(--serif);color:var(--muted)}
 .dialog-actions.end{justify-content:flex-end}
 .key-state.stored{color:var(--gold)}
 .key-state.stored::before{content:"▲";color:var(--gold);font-size:9px;vertical-align:2px}
+
+/* map layer popover + square bus markers -------------------------- */
+.map-label-options{top:104px;right:10px;z-index:3}
+.layer-toggle{overflow:hidden}
+.layer-toggle .layer-toggle-button{display:grid;place-items:center;width:29px;height:29px;margin:0;padding:0;border:0;border-radius:0;background:transparent}
+.layer-toggle .layer-toggle-button:hover{background:#f2ece0}
+.layer-toggle .layer-toggle-button[aria-expanded="true"]{background:var(--ink)}
+.layer-icon{position:relative;display:block;width:16px;height:16px}
+.layer-icon::before,.layer-icon::after{content:"";position:absolute;top:4px;width:9px;height:9px;border:1px solid var(--ink);background:var(--sheet);transform:rotate(45deg)}
+.layer-icon::before{left:0}
+.layer-icon::after{left:6px;background:var(--ink)}
+.layer-toggle .layer-toggle-button[aria-expanded="true"] .layer-icon::before{border-color:var(--paper);background:var(--paper)}
+.layer-toggle .layer-toggle-button[aria-expanded="true"] .layer-icon::after{border-color:var(--paper);background:transparent}
+.rail-foot{margin-bottom:2px}
+.network-node.hub .hub-stop-id{font:400 12px/1.4 var(--mono);letter-spacing:.2px}

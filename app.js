@@ -42,17 +42,40 @@ async function hydrate(s){
 async function standard(s){if(/^\d{9}$/.test(s.standardId||''))return s.standardId;await hydrate(s);s.standardId=await resolveStopIdentity(client,s,await getSpec(),ids,()=>{});return s.standardId;}
 
 ML.setWorkerUrl(new URL('./vendor/maplibre-gl-worker.mjs',import.meta.url).href);
+// 지도 +/− 바로 아래에 붙는 레이어 선택 버튼(모달 아님, 지도 위 작은 팝오버).
+class LayerToggleControl{
+  constructor(panel){this.panel=panel;this.button=null;
+    this.handleClick=e=>{if(this.panel.contains(e.target)||this.button?.contains(e.target))return;this.close();};
+    this.handleKey=e=>{if(e.key==='Escape')this.close();};}
+  onAdd(){
+    const div=document.createElement('div');div.className='maplibregl-ctrl maplibregl-ctrl-group layer-toggle';
+    const b=document.createElement('button');b.type='button';b.className='layer-toggle-button';b.title='레이어 선택';b.setAttribute('aria-label','지도 레이어 선택');b.setAttribute('aria-expanded','false');
+    b.innerHTML='<span class="layer-icon" aria-hidden="true"></span>';
+    b.onclick=()=>{if(this.panel.hidden)this.open();else this.close();};
+    div.append(b);this.button=b;return div;
+  }
+  onRemove(){this.close();this.button?.parentNode?.remove();}
+  open(){this.panel.hidden=false;this.button?.setAttribute('aria-expanded','true');document.addEventListener('click',this.handleClick);document.addEventListener('keydown',this.handleKey);}
+  close(){this.panel.hidden=true;this.button?.setAttribute('aria-expanded','false');document.removeEventListener('click',this.handleClick);document.removeEventListener('keydown',this.handleKey);}
+}
 let map;
 try{
   map=new ML.Map({container:'map',style:region.mapStyle,center:[...region.center],zoom:region.zoom,attributionControl:false,pitchWithRotate:false,dragRotate:false});
-  map.addControl(new ML.NavigationControl({showCompass:false}),'top-right');map.addControl(new ML.AttributionControl({compact:false}),'bottom-right');
+  map.addControl(new ML.NavigationControl({showCompass:false}),'top-right');map.addControl(new LayerToggleControl($('layer-menu')),'top-right');map.addControl(new ML.AttributionControl({compact:false}),'bottom-right');
   map.on('error',()=>{$('map-error').textContent='배경지도 연결을 확인하세요. 정류장 선택과 로컬 저장은 계속 사용할 수 있습니다.';$('map-error').hidden=false;});
   map.on('load',()=>{
     map.addSource('route-sections',{type:'geojson',data:routeFeatures});
     map.addLayer({id:'route-section-halo',type:'line',source:'route-sections',paint:{'line-color':'#fff','line-width':8,'line-opacity':.85}});
     map.addLayer({id:'route-section-lines',type:'line',source:'route-sections',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':['get','color'],'line-width':4,'line-offset':['get','offset']}});
     map.addLayer({id:'route-section-numbers',type:'symbol',source:'route-sections',layout:{'symbol-placement':'line','text-field':['get','number'],'text-font':['Noto Sans Regular'],'text-size':12},paint:{'text-color':'#214f36','text-halo-color':'#fff','text-halo-width':2}});
-    map.addSource('bus-stops',{type:'geojson',data:features()});map.addLayer({id:'bus-stops',type:'circle',source:'bus-stops',layout:{visibility:$('stop-picker').open?'visible':'none'},paint:{'circle-radius':['interpolate',['linear'],['zoom'],10,2,14,4,17,6],'circle-color':'#63816b','circle-opacity':.8,'circle-stroke-color':'#fff','circle-stroke-width':1}});
+    map.addSource('bus-stops',{type:'geojson',data:features()});
+    // 점 대신 테마에 맞춘 네모 버스 아이콘을 씽니다.
+    const busCanvas=document.createElement('canvas');busCanvas.width=busCanvas.height=40;const busCtx=busCanvas.getContext('2d');
+    busCtx.fillStyle='#fdfbf5';busCtx.fillRect(0,0,40,40);busCtx.strokeStyle='#26241f';busCtx.lineWidth=4;busCtx.strokeRect(2,2,36,36);
+    busCtx.fillStyle='#26241f';busCtx.fillRect(9,11,22,15);busCtx.fillStyle='#fdfbf5';busCtx.fillRect(12,14,7,6);busCtx.fillRect(21,14,7,6);
+    busCtx.fillStyle='#26241f';busCtx.fillRect(11,27,5,4);busCtx.fillRect(24,27,5,4);
+    map.addImage('bus-square',busCtx.getImageData(0,0,40,40),{pixelRatio:2});
+    map.addLayer({id:'bus-stops',type:'symbol',source:'bus-stops',layout:{visibility:$('stop-picker').open?'visible':'none','icon-image':'bus-square','icon-size':['interpolate',['linear'],['zoom'],10,.55,14,.8,17,1.05],'icon-allow-overlap':true,'icon-ignore-placement':true}});
     map.on('click','bus-stops',e=>{const s=stops[Number(e.features?.[0]?.properties.index)];if(s)showStop(s);});
     map.on('mouseenter','bus-stops',()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave','bus-stops',()=>map.getCanvas().style.cursor='');
   });
@@ -208,8 +231,13 @@ $('service-query').onclick=async()=>{
 };
 function clearEntry(){for(const id of ['stop-search','manual-number','manual-name'])$(id).value='';$('stop-picker').open=false;}
 function selectTab(name){clearLines();tab=name;for(const b of document.querySelectorAll('[data-tab]')){if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}for(const t of ['plan','saved','service','about'])$(t+'-panel').hidden=t!==name;$('picker').hidden=name==='saved'||name==='about';activeRole=name==='service'?'serviceFrom':'origin';clearEntry();renderPicker();if(name==='saved')renderSaved();showPoints();}
-for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>selectTab(b.dataset.tab);
-$('panel-toggle').onclick=()=>{const collapsed=document.querySelector('.sidebar').classList.toggle('collapsed');$('panel-body').hidden=collapsed;$('panel-toggle').textContent=collapsed?'펼치기':'접기';$('panel-toggle').setAttribute('aria-expanded',String(!collapsed));};
+let panelOpen=true;
+function setPanel(open){panelOpen=open;document.querySelector('.sidebar').classList.toggle('collapsed',!open);$('panel-body').hidden=!open;}
+for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>{
+  const name=b.dataset.tab;
+  if(name===tab&&panelOpen){setPanel(false);return;}
+  setPanel(true);selectTab(name);
+};
 const KEY_FIELDS=[['default','api-key'],['stops','stops-key'],['routes','routes-key'],['realtime','realtime-key'],['transfer','transfer-key']];
 const KEY_STORE='busmap.apikeys.v1',KEY_NOTICE='busmap.apikeys.notice.v1',CONSENT_SECONDS=5;
 const cleanKeys=value=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.entries(value).filter(([,v])=>typeof v==='string'&&v.trim())):{};
