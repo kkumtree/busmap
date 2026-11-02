@@ -1,5 +1,6 @@
 export const SOURCES = Object.freeze({
   routes: 'https://apis.data.go.kr/4641000/nosun',
+  busstop: 'https://apis.data.go.kr/4641000/busstop',
   realtime: 'https://apis.data.go.kr/4641000/realtime',
   transfer: 'https://apis.data.go.kr/4641000/transfer',
   stops: 'https://api.odcloud.kr/api',

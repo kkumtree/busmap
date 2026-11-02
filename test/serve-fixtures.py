@@ -43,6 +43,14 @@ class Handler(PublicHandler):
             if number is not None:
                 points = [p for p in points if p["정류장번호"] == number]
             return self.send(json.dumps({"totalCount": 3, "data": points}, ensure_ascii=False))
+        if path == "/gw/busstop/bus_location2_stopno_common":
+            number = query.get("searchNm", [""])[0]
+            rows = [{"stopId":p["정류장번호"],"stopKname":p["정류장명"],"stopStandardid":str(100000001+i),"stopX":p["경도"],"stopY":p["위도"]} for i,p in enumerate(POINTS) if p["정류장번호"] == number]
+            return self.send(json.dumps({"code":"0","routeList":{"list":rows}}, ensure_ascii=False))
+        if path == "/gw/busstop/general_busstop_common":
+            number = int(query["stopStandardid"][0]) - 100000001
+            rows = [{"brtStdId":r,"brtId":r,"brtSname":"테스트 시작","brtEname":"테스트 종점"} for r,seq in ROUTES.items() if number in seq]
+            return self.send(json.dumps({"code":"0","routeList":{"list":rows}}, ensure_ascii=False))
         if path == "/gw/realtime/bus_location_low_busstop_infomation_common":
             number = int(query["stopStdid"][0]) - 100000001
             rows = [{"brtStdid": r, "brtId": r, "brtDirection": "1", "brtVianame": "테스트 종점"} for r, seq in ROUTES.items() if number in seq]

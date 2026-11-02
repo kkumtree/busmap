@@ -16,7 +16,7 @@ let focused='',geometryVersion=0,routeFeatures={type:'FeatureCollection',feature
 const shapes=shapeStore();
 let plan=emptyPlan(),tab='plan',activeRole='origin',service={from:null,to:null},viewedPlan=null;
 let keys={},version=0,loading=false,popup,toastTimer,specPromise,deleted;
-const callCounts={stops:0,routes:0,realtime:0,transfer:0};
+const callCounts={stops:0,routes:0,realtime:0,transfer:0,busstop:0};
 const client=createClient(source=>keys[source]||keys.default||'',{onRequest:source=>{$('calls-'+source).textContent=++callCounts[source];}});
 const region=regionById(DEFAULT_REGION_ID);
 const labelLayers=[['show-dong','legal-dong-names'],['show-neighbourhoods','neighbourhood-names'],['show-schools','school-names'],['show-public','public-facility-names'],['show-rail','railway-station-names'],['show-terminals','bus-terminal-names'],['show-medical','medical-facility-names'],['show-parks','park-place-names']];
@@ -184,10 +184,10 @@ async function showEdgeLines(p,kind,entry,fit=false){
 for(const [id,layer]of labelLayers)$(id).onchange=e=>{if(map?.getLayer(layer))map.setLayoutProperty(layer,'visibility',e.target.checked?'visible':'none');};
 
 async function queryEdge(kind,entry){
-  if(pending.has(entry)||!plan.transfer)return;
+  if(pending.has(entry)||!plan.transfer||!requireKeys(['busstop','routes']))return;
   const token=version;pending.add(entry);entry.error='';renderPlan();
   try{const from=kind==='origin'?entry.stop:plan.transfer,to=kind==='origin'?plan.transfer:entry.stop;
-    const result=await queryDirectLeg(client,from,to,{entries,check:()=>{if(token!==version)throw new DOMException('변경','AbortError');}});if(token!==version)return;
+    const result=await queryDirectLeg(client,from,to,{entries,ids,check:()=>{if(token!==version)throw new DOMException('변경','AbortError');}});if(token!==version)return;
     if(!result.partial)entry.routes=entry.routes.filter(old=>result.routes.some(r=>r.routeId===old.routeId));
     for(const r of result.routes){const old=entry.routes.find(x=>x.routeId===r.routeId||(!x.routeId&&x.number===r.number));const checked=old?old.selected:false;const route=cleanRoute({...old,...r,geometryStatus:old?.geometryStatus||'not-requested',verified:true,selected:checked});if(old)Object.assign(old,route);else entry.routes.push(route);}
     if(result.routes[0]){from.standardId=result.routes[0].fromStandardId;to.standardId=result.routes[0].toStandardId;}
@@ -199,7 +199,7 @@ async function queryEdge(kind,entry){
       try{const shape=await getShapeOnQuery(client,shapes,r.routeId);if(token!==version)return;const section=clipShape(shape,from,to,r);r.shapeKey=r.routeId;r.segment=section.segment;r.geometryStatus=section.status;r.geometryMessage=section.message||'';if(!r.segment)geometryFailures++;}
       catch(error){if(token!==version||error.name==='AbortError')return;r.geometryStatus='request-error';r.geometryMessage=error.message;geometryFailures++;}
     }
-    entry.note=`저장된 노선 ${result.examined}개에서 경유 순서를 확인했습니다.${result.partial?' 현재 저장된 경유 정보 범위의 결과입니다.':''}${!result.routes.length?' 이 구간에 맞는 노선이 없습니다.':''}${geometryFailures?' 선형 미확보 '+geometryFailures+'개.':''}`;
+    entry.note=`두 정류장의 공통 경유 노선 ${result.examined}개에서 운행 순서를 확인했습니다.${result.partial?' 현재 저장된 경유 정보 범위의 결과입니다.':''}${!result.routes.length?' 이 구간에 맞는 노선이 없습니다.':''}${geometryFailures?' 선형 미확보 '+geometryFailures+'개.':''}`;
     showEdgeLines(plan,kind,entry);
     try{storage.setItem('busmap.route-stops.v2',JSON.stringify(entries));}catch{}
   }catch(e){if(token===version&&e.name!=='AbortError'){entry.error=e.message;}}finally{pending.delete(entry);if(token===version)renderPlan();}
@@ -259,7 +259,7 @@ for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>{
   if(name===tab&&panelOpen){setPanel(false);return;}
   setPanel(true);selectTab(name);
 };
-const KEY_FIELDS=[['default','api-key'],['stops','stops-key'],['routes','routes-key'],['realtime','realtime-key'],['transfer','transfer-key']];
+const KEY_FIELDS=[['default','api-key'],['stops','stops-key'],['routes','routes-key'],['realtime','realtime-key'],['transfer','transfer-key'],['busstop','busstop-key']];
 const KEY_STORE='busmap.apikeys.v1',KEY_NOTICE='busmap.apikeys.notice.v1',CONSENT_SECONDS=5;
 const cleanKeys=value=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.entries(value).filter(([,v])=>typeof v==='string'&&v.trim())):{};
 function readStoredKeys(){try{return cleanKeys(JSON.parse(storage.getItem(KEY_STORE)||'null')?.keys);}catch{return {};}}
