@@ -68,7 +68,7 @@ export async function getShapeOnQuery(client,store,routeId) {
 
 // A provider-selected section is not an unordered whole-route shape. Preserve
 // every link separately: intersection gaps must never become invented lines.
-export const SECTION_VERSION=1;
+export const SECTION_VERSION=2;
 const sectionSource='transfer/bus_stop_drawing_common';
 export function sectionRequest(route,from,to) {
   const fromId=route.fromStandardId||from.standardId,toId=route.toStandardId||to.standardId;
@@ -107,7 +107,18 @@ export function parseSection(rows,from,to,route,{anchors=[]}={}) {
     if(!valid(p)||!id||f(row,'vtxSeq')===''||!Number.isFinite(seq))return fail('unsupported','invalid-vertex','형상의 좌표계 또는 링크·꼭짓점 순번을 확인하지 못했습니다.');
     let group=groups.at(-1);if(!group||group.id!==id){group={id,points:[]};groups.push(group);}group.points.push({p,seq});
   }
-  const raw=groups.map(g=>g.points.sort((a,b)=>a.seq-b.seq).map(x=>x.p));
+  const raw=[];
+  for(const group of groups){
+    const vertices=new Map();
+    for(const {seq,p} of group.points){
+      const previous=vertices.get(seq);
+      if(previous&&(previous[0]!==p[0]||previous[1]!==p[1])){
+        return fail('ambiguous','conflicting-vertex','같은 도로 꼭짓점 순번에 서로 다른 위치가 있어 표시를 보류했습니다.');
+      }
+      vertices.set(seq,p);
+    }
+    raw.push([...vertices].sort(([a],[b])=>a-b).map(([,p])=>p));
+  }
   if(raw.some(l=>l.length<2))return fail('unsupported','incomplete-link','꼭짓점이 부족한 도로 조각이 있어 구간 표시를 보류했습니다.');
   const candidates=new Map();let endpointPairs=0,anchorFailures=0,gapFailures=0;
   for(const reverseOrder of [false,true])for(const reverseFirst of [false,true]){

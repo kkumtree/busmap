@@ -16,8 +16,10 @@ export function sectionAnchors(routeStops,localStops,route) {
   });
 }
 export function matchesStop(point, stop) {
-  // File stop numbers are never used as standard IDs. Match both the public
-  // number and name against the route's stop service ID; no fuzzy name joins.
+  // Both IDs come from platform/route services. File-only stops have no standard ID.
+  if (/^\d{9}$/.test(point?.standardId ?? '') && /^\d{9}$/.test(stop?.standardId ?? '')) {
+    return String(point.standardId) === String(stop.standardId);
+  }
   return Boolean(point?.number && point?.name && stop?.number && stop?.name)
     && numberKey(point.number) === numberKey(stop.number) && nameKey(point.name) === nameKey(stop.name);
 }

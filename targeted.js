@@ -1,4 +1,4 @@
-import {field as f, latestStopDataset, STOP_SPEC_URL} from './api.js';
+import {ApiRequestError, field as f, latestStopDataset, STOP_SPEC_URL} from './api.js';
 import {routeStop, findDirectRoutes, matchesStop} from './journey.js';
 
 export async function fetchStopSpec() {
@@ -41,10 +41,13 @@ export async function resolvePlatformIdentity(client,point,ids=new Map(),check=(
   if(ids.has(key)){Object.assign(point,ids.get(key));return point.standardId;}
   const {rows}=await client.get('busstop','bus_location2_stopno_common',{searchNm:point.number});check();
   const placeholder=point.name===`정류장 ${point.number}`;
-  const matches=rows.filter(row=>{
-    const stop={number:f(row,'stopId'),name:f(row,'stopKname')};
-    return (placeholder?String(stop.number).replace(/^0+/,'')===String(point.number).replace(/^0+/,''):matchesStop(point,stop))&&/^\d{9}$/.test(f(row,'stopStandardid'));
-  });
+  const numbered=rows.filter(row=>f(row,'stopId').replace(/^0+/,'')===String(point.number).replace(/^0+/,'')
+    && /^\d{9}$/.test(f(row,'stopStandardid')));
+  let matches=placeholder?numbered:numbered.filter(row=>matchesStop(point,{number:f(row,'stopId'),name:f(row,'stopKname')}));
+  // A rename can be resolved only when the public number is unambiguous and the location agrees.
+  if(!matches.length && new Set(numbered.map(row=>f(row,'stopStandardid'))).size===1){
+    matches=numbered.filter(row=>samePosition(point,{lat:Number(f(row,'stopY')),lon:Number(f(row,'stopX'))}));
+  }
   const standards=new Set(matches.map(row=>f(row,'stopStandardid')));
   if(standards.size!==1)throw new Error(`${point.name}: 정류장번호·이름에 맞는 표준ID를 하나로 확인하지 못했습니다.`);
   const row=matches[0],lon=Number(f(row,'stopX')),lat=Number(f(row,'stopY'));
@@ -58,13 +61,96 @@ export async function resolvePlatformIdentity(client,point,ids=new Map(),check=(
   point.standardId=[...standards][0];ids.set(key,{standardId:point.standardId,name:point.name,lat:point.lat,lon:point.lon});return point.standardId;
 }
 
+function fresh(entry){
+  const age=Date.now()-entry?.date;
+  return Number.isFinite(entry?.date)&&age>=0&&age<=86400000&&Array.isArray(entry.stops);
+}
+
+function samePosition(a,b){
+  if(![a.lat,a.lon,b.lat,b.lon].every(Number.isFinite))return false;
+  return Math.hypot((a.lat-b.lat)*111000,(a.lon-b.lon)*111000*Math.cos(a.lat*Math.PI/180))<=25;
+}
+
+export function cachedPlatformId(point,entries,platforms=[]){
+  if(point.standardId)return '';
+  const ids=new Set();
+  for(const entry of Object.values(entries)){
+    if(!fresh(entry))continue;
+    for(const stop of entry.stops)if(/^\d{9}$/.test(stop?.standardId)&&matchesStop(point,stop))ids.add(stop.standardId);
+  }
+  for(const platform of platforms){
+    if(platform.number===point.number && samePosition(point,platform))ids.add(platform.standardId);
+  }
+  return ids.size===1?[...ids][0]:'';
+}
+
+// Old records and regional hints select which route to ask about, never the answer.
+async function searchAlternateRoutes(client,from,to,{routeHints={},check=()=>{},entries,memberships}){
+  const hints=new Map(routeHints[from.number+':'+to.number]||[]);
+  for(const [id,e] of Object.entries(entries)){
+    if(e?.number&&Array.isArray(e.stops)&&[from,to].every(p=>e.stops.some(s=>matchesStop(p,s))))hints.set(id,e.number);
+  }
+  const candidates=[...hints].filter(([id])=>/^\d{9}$/.test(id)&&memberships.every(list=>list.has(id))).slice(0,4);
+  if(!candidates.length)return null;
+  const checked=[];let examined=0,alternateError='';
+  for(const [id,number] of candidates){
+    check();let entry=entries[id];
+    if(!fresh(entry)){
+      let rows;
+      try{({rows}=await client.get('routes','bus_location_busstop_list_common',{brtStdid:id}));}
+      catch(error){if(!(error instanceof ApiRequestError))throw error;alternateError=error.message;break;}
+      check();
+      if(!rows.length||rows.some(r=>f(r,'brtStdid')!==id)){
+        alternateError='경유 목록에서 요청한 노선 ID를 확인하지 못했습니다.';break;
+      }
+      entry={date:Date.now(),number,stops:rows.map(routeStop)};entries[id]=entry;
+    }
+    examined++;
+    checked.push({...entry,id,number});
+  }
+  // Resolve both selected platforms uniquely across the checked sequences.
+  const points=[from,to].map(point=>{
+    const ids=new Set(checked.flatMap(r=>r.stops.filter(stop=>(point.standardId ? stop.standardId===point.standardId && stop.number===point.number : matchesStop(point,stop))&&/^\d{9}$/.test(stop.standardId)).map(s=>s.standardId)));
+    if(ids.size!==1||(point.standardId&&!ids.has(point.standardId)))return null;
+    return {...point,standardId:[...ids][0]};
+  });
+  const routes=points.every(Boolean)?findDirectRoutes(checked,...points):[];
+  return {routes,examined,alternateError};
+}
+
 // Two static membership lists are intersected before requesting stop sequences.
 // No realtime arrivals, transfer suggestions, whole-city catalogs or retries.
-export async function queryDirectLeg(client,from,to,{entries={},ids=new Map(),check=()=>{},onProgress=()=>{}}={}) {
+export async function queryDirectLeg(client,from,to,options={}) {
+  const entries=options.entries??{};
+  const memberships=[];
+  for(const stop of [from,to]){const id=cachedPlatformId(stop,entries,options.platforms);if(id)stop.standardId=id;}
+  try {
+    return await queryLiveLeg(client,from,to,{...options,entries,memberships});
+  } catch(error) {
+    if(!(error instanceof ApiRequestError)||!error.unavailable)throw error;
+    options.check?.();
+    // Recovery uses verified platform identities, never infers one after a lookup failure.
+    const known=[from,to].every(stop=>/^\d{9}$/.test(stop.standardId||''));
+    const now=Date.now();
+    const cached=Object.entries(entries).filter(([id,e])=>memberships.every(list=>list.has(id))&&e?.number&&Array.isArray(e.stops)
+      &&e.date<=now&&now-e.date<=86400000).map(([id,e])=>({...e,id,
+        stops:e.stops.filter(s=>/^\d{9}$/.test(s?.standardId||''))}));
+    const routes=known?findDirectRoutes(cached,from,to):[];
+    if(routes.length)return {routes,examined:cached.length,partial:true,sourceFailed:true,error:error.message};
+    if(error.source!=='busstop'||!error.unavailable)throw error;
+    const result=await searchAlternateRoutes(client,from,to,{...options,entries,memberships});
+    if(!result)throw error;
+    if(result.alternateError&&!result.routes.length)throw new Error(`${error.message} / 경유 목록 확인: ${result.alternateError}`);
+    return {...result,partial:true,alternate:true,sourceFailed:true,error:error.message};
+  }
+}
+async function queryLiveLeg(client,from,to,{entries,memberships,ids=new Map(),check=()=>{},onProgress=()=>{}}) {
   const fromId=await resolvePlatformIdentity(client,from,ids,check);check();
   const toId=await resolvePlatformIdentity(client,to,ids,check);check();
   const start=await client.get('busstop','general_busstop_common',{stopStandardid:fromId});check();
+  memberships.push(new Set(start.rows.map(row=>f(row,'brtStdId'))));
   const end=await client.get('busstop','general_busstop_common',{stopStandardid:toId});check();
+  memberships.push(new Set(end.rows.map(row=>f(row,'brtStdId'))));
   for(const result of [start,end])if(result.rows.length&&!result.rows.some(row=>f(row,'brtStdId')))throw new Error('승강장 경유노선 응답에 노선 ID가 없습니다.');
   const endIds=new Set(end.rows.map(row=>f(row,'brtStdId')).filter(Boolean)),candidates=new Map();
   for(const row of start.rows){

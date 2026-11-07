@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DOMParser} from '@xmldom/xmldom';
-import {buildURL, parsePayload, unpack, normalizeStop, arrivalTime, createClient} from '../api.js';
+import {buildURL, parsePayload, unpack, normalizeStop, arrivalTime, arrivalEstimate, createClient} from '../api.js';
 
 test('raw and encoded keys, including +, are encoded exactly once', () => {
   for (const key of ['abc+/=', 'abc%2B%2F%3D']) {
@@ -26,6 +26,7 @@ test('HTTP 200 error payloads are not mistaken for empty success', () => {
   const payload = parsePayload('<OpenAPI_ServiceResponse><cmmMsgHeader><returnReasonCode>30</returnReasonCode><returnAuthMsg>등록되지 않은 키</returnAuthMsg></cmmMsgHeader></OpenAPI_ServiceResponse>', DOMParser);
   assert.throws(() => unpack(payload), /등록되지 않은/);
   assert.throws(() => unpack({code:-4,msg:'인증 오류'}), /인증 오류/);
+  assert.throws(() => unpack(parsePayload('<html><body>service unavailable</body></html>',DOMParser)), /결과 코드나 목록/);
 });
 test('ODcloud keeps stop numbers as strings and never invents standard IDs', () => {
   const rows = unpack(parsePayload('{"totalCount":1,"data":[{"정류장명":"전주역","정류장번호":"00123","위도":"35.849","경도":"127.161"}]}'));
@@ -53,4 +54,23 @@ test('request observer counts attempts including failures, but not missing-key v
   await assert.rejects(client.get('busstop','general_busstop_common',{stopStandardid:'305100920'}),/연결 실패/);
   assert.deepEqual(counts,{stops:0,routes:1,realtime:0,transfer:1,busstop:1});
   await assert.rejects(createClient(()=>'',{onRequest:()=>assert.fail('No request was made')}).get('routes','bus_location1_common'),/인증키/);
+});
+
+test('remaining stops are independent of the seconds estimate',()=>{
+  assert.equal(arrivalEstimate({RStop:'3'}),'시간 미제공 · 3정류장 남음');
+  assert.equal(arrivalEstimate({RTime:'120',RStop:'0'}),'약 2분 · 0정류장 남음');
+  assert.equal(arrivalEstimate({RTime:'120',RStop:'-1'}),'약 2분');
+});
+
+test('503 pauses only the failed operation; expiry permits a manual request without scheduling a retry',async t=>{
+  let hits=0,now=100000;
+  t.mock.method(Date,'now',()=>now);
+  t.mock.method(globalThis,'fetch',async()=>{hits++;return new Response(JSON.stringify({code:'05',msg:'서비스 연결실패'}),{status:503});});
+  const client=createClient(()=> 'fixture');
+  const get=()=>client.get('busstop','bus_location2_stopno_common',{searchNm:'30920'});
+  await assert.rejects(get(),/HTTP 503/);
+  client.reset();
+  await assert.rejects(get(),/재호출을 생략/);assert.equal(hits,1);
+  await assert.rejects(client.get('routes','bus_location_busstop_list_common',{brtStdid:'305001089'}),/HTTP 503/);assert.equal(hits,2);
+  now+=60000;await assert.rejects(get(),/HTTP 503/);assert.equal(hits,3);
 });

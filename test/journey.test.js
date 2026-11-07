@@ -57,3 +57,11 @@ test('bad or incomplete journeys cannot be saved',()=>{
   const storage=memory();
   assert.throws(()=>saveJourney(storage,{id:'bad',name:'미완성',points:{from:a,via:b,to:c},routes:[]}),/확인/);
 });
+
+test('resolved platform IDs match renamed stops and reject a same-name different platform',()=>{
+  const from={...a,standardId:'305100920'},to={...c,standardId:'305032413'};
+  const stops=[{...from,name:'이전 명칭',seq:31},{...to,standardId:'305032414',seq:34},{...to,seq:38}];
+  const [match]=findDirectRoutes([{id:'r',number:'101',stops}],from,to);
+  assert.deepEqual([match.fromSeq,match.toSeq],[31,38]);
+  assert.deepEqual(findDirectRoutes([{id:'r',number:'101',stops}],to,from),[]);
+});

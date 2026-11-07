@@ -1,3 +1,4 @@
+import region from '../regions/jeonju.js';
 import {DOMParser} from '@xmldom/xmldom';
 import {createClient,latestStopDataset,normalizeStop} from '../api.js';
 import {queryDirectLeg,fetchStopSpec} from '../targeted.js';
@@ -21,8 +22,9 @@ try {
   console.log('선택 정류장:',points.map(p=>`${p.number} ${p.name}`).join(' → '));
   const ids=new Map(),entries={};
   for(let i=0;i<points.length-1;i++) {
-    const result=await queryDirectLeg(client,points[i],points[i+1],{getSpec:async()=>spec,ids,entries});
+    const result=await queryDirectLeg(client,points[i],points[i+1],{platforms:region.platforms,routeHints:region.routeHints,ids,entries});
     console.log(`${i+1}구간: 후보 ${result.examined}개만 조회`);
+    if(result.sourceFailed)console.log('일부 결과: '+result.error);
     console.log(result.routes.map(r=>({number:r.number,routeId:r.routeId,fromSeq:r.fromSeq,toSeq:r.toSeq,stopCount:r.stopCount})));
   }
   console.log('전체 노선 목록·전체 노선 정류장 수집은 수행하지 않았습니다.');

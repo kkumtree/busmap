@@ -73,7 +73,10 @@ export function unpack(payload) {
   if (root.data != null) return asArray(root.data);
   const body = root.body ?? root;
   const list = body.routeList?.list ?? body.items?.item;
-  if (list == null || list === '') return [];
+  if (list == null || list === '') {
+    if (code || Object.hasOwn(body, 'routeList') || Object.hasOwn(body, 'items')) return [];
+    throw new Error('API 응답에서 결과 코드나 목록을 찾지 못했습니다.');
+  }
   return asArray(list).filter(row => row && typeof row === 'object');
 }
 
@@ -94,13 +97,33 @@ export function arrivalTime(value) {
   return `약 ${Math.ceil(seconds / 60)}분`;
 }
 
+export function arrivalEstimate(row) {
+  const stops = field(row, 'RStop');
+  const time = arrivalTime(field(row, 'RTime'));
+  return /^\d+$/.test(stops) ? `${time} · ${Number(stops)}정류장 남음` : time;
+}
+
+export class ApiRequestError extends Error {
+  constructor(message,source=null,unavailable=false){
+    super(message);this.source=source;this.unavailable=unavailable;
+  }
+}
+
 export function createClient(getKey, {onRequest=()=>{}}={}) {
   let controller = new AbortController();
+  const outages=new Map();
+  function failure(message,source,operation,unavailable){
+    const error=new ApiRequestError(message,source,unavailable);
+    if(unavailable)outages.set(source+':'+operation,{until:Date.now()+60000,error});
+    return error;
+  }
   return {
-    reset() { controller.abort(); controller = new AbortController(); },
+    reset({keysChanged=false}={}) { controller.abort(); controller = new AbortController(); if(keysChanged)outages.clear(); },
     async get(source, operation = '', params = {}) {
       const key = getKey(source);
       const url = buildURL(source, operation, params, key);
+      const recent=outages.get(source+':'+operation);
+      if(recent?.until>Date.now())throw new ApiRequestError(recent.error.message+' (최근 장애로 1분간 이 기능의 재호출을 생략합니다.)',source,true);
       const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]);
       let response;
       try {
@@ -108,7 +131,7 @@ export function createClient(getKey, {onRequest=()=>{}}={}) {
         response = await fetch(url, {signal, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', redirect: 'error'});
       } catch (e) {
         if (e.name === 'AbortError') throw e;
-        throw new Error(e.name === 'TimeoutError' ? '응답이 늦어지고 있습니다. 잠시 뒤 다시 조회하세요.' : 'API에 연결하지 못했습니다. 네트워크나 제공기관의 CORS 허용 상태를 확인하세요.');
+        throw new ApiRequestError(e.name === 'TimeoutError' ? '응답이 늦어지고 있습니다. 잠시 뒤 다시 조회하세요.' : 'API에 연결하지 못했습니다. 네트워크나 제공기관의 CORS 허용 상태를 확인하세요.',source,false);
       }
       let payload, rows;
       try {
@@ -120,9 +143,9 @@ export function createClient(getKey, {onRequest=()=>{}}={}) {
         for (const value of [key, decodeKey(key), encodeURIComponent(decodeKey(key))]) {
           if (value) message = message.split(value).join('[인증키]');
         }
-        throw new Error(message.slice(0, 240));
+        throw failure((response.ok ? '' : `HTTP ${response.status} · `) + message.slice(0, 240),source,operation,response.status===503||field((payload?.response??payload)?.cmmMsgHeader,"returnReasonCode")==="05");
       }
-      if (!response.ok) throw new Error(`조회에 실패했습니다 (HTTP ${response.status}). 활용신청 승인과 인증키를 확인하세요.`);
+      if (!response.ok) throw failure(`조회에 실패했습니다 (HTTP ${response.status}).`,source,operation,response.status===503);
       return {rows, total: Number(payload.totalCount ?? rows.length)};
     },
   };

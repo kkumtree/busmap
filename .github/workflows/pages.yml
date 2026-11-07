@@ -31,6 +31,8 @@ jobs:
           mkdir _site/regions
           cp regions/index.js regions/jeonju.js _site/regions/
           cp -r vendor _site/
+          cp -r design-system _site/
+          cp ui-layout.js navigation.js _site/
           node scripts/stamp-assets.mjs _site "$GITHUB_SHA"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4

@@ -1,7 +1,7 @@
 import {cleanLine} from './route-geometry.js';
 export const PLANS_KEY='busmap.transfer-plans.v1';
 export const pointKey=p=>String(p?.number||'');
-export const emptyPlan=()=>({id:'',name:'',transfer:null,origins:[],destinations:[]});
+export const emptyPlan=(mode='transfer')=>({mode,id:'',name:'',transfer:null,origins:[],destinations:[]});
 export function cleanPoint(p) {
   if(!p || !String(p.number||'').trim())throw new Error('정류장 번호를 확인하세요.');
   const coord=v=>v!==null && v!=='' && Number.isFinite(Number(v))?Number(v):null;
@@ -18,14 +18,15 @@ export function cleanRoute(r) {
     geometryDiagnostics:r.geometryDiagnostics?{reason:String(r.geometryDiagnostics.reason||''),choiceCount:Number(r.geometryDiagnostics.choiceCount)||0,linkCount:Number(r.geometryDiagnostics.linkCount)||0,anchorCount:Number(r.geometryDiagnostics.anchorCount)||0,maxGapMeters:Number(r.geometryDiagnostics.maxGapMeters)||0}:null};
 }
 export function normalizePlan(plan) {
-  return {id:String(plan.id||''),name:String(plan.name||'').trim().slice(0,80),transfer:plan.transfer?cleanPoint(plan.transfer):null,
+  return {mode:plan.mode==='direct'?'direct':'transfer',id:String(plan.id||''),name:String(plan.name||'').trim().slice(0,80),transfer:plan.transfer?cleanPoint(plan.transfer):null,
     origins:(plan.origins||[]).map(e=>({stop:cleanPoint(e.stop),routes:(e.routes||[]).map(cleanRoute)})),
     destinations:(plan.destinations||[]).map(e=>({stop:cleanPoint(e.stop),routes:(e.routes||[]).map(cleanRoute)}))};
 }
 export function validatePlan(plan) {
   const p=normalizePlan(plan);
-  if(!p.transfer)throw new Error('환승지 한 곳을 지정하세요.');
-  if(!p.origins.length || !p.destinations.length)throw new Error('출발지와 도착지를 한 곳 이상 추가하세요.');
+  if(!p.transfer)throw new Error(p.mode==='direct'?'도착지를 지정하세요.':'환승지 한 곳을 지정하세요.');
+  if(p.mode==='direct'&&p.destinations.length)throw new Error('직행에는 한 구간만 지정하세요.');
+  if(!p.origins.length || (p.mode!=='direct'&&!p.destinations.length))throw new Error('출발지와 도착지를 한 곳 이상 추가하세요.');
   for(const group of [p.origins,p.destinations]) {
     if(new Set(group.map(e=>pointKey(e.stop))).size!==group.length)throw new Error('같은 구간에 정류장이 중복되어 있습니다.');
     for(const entry of group) {
@@ -51,6 +52,7 @@ export function writePlan(storage,plan) {
 export function arrivalTargets(plan) {
   const result=new Map();
   for(const e of plan.origins)result.set(pointKey(e.stop),{stop:e.stop,routes:e.routes.filter(r=>r.selected),kind:'출발지'});
+  if(plan.mode==='direct')return [...result.values()];
   const viaRoutes=plan.destinations.flatMap(e=>e.routes.filter(r=>r.selected));
   result.set(pointKey(plan.transfer),{stop:plan.transfer,routes:viaRoutes,kind:'환승지'});
   return [...result.values()];
@@ -62,7 +64,7 @@ export function stopHint(stop,entries={}) {
   for(const route of Object.values(entries)) {
     if(!Array.isArray(route?.stops))continue;
     const sorted=[...route.stops].sort((a,b)=>a.seq-b.seq);
-    sorted.forEach((s,i)=>{if(String(s.number)===String(stop.number) && s.name===stop.name && sorted[i+1]?.name)next.add(sorted[i+1].name);});
+    sorted.forEach((s,i)=>{if(String(s.number)===String(stop.number) && (s.standardId&&stop.standardId?s.standardId===stop.standardId:s.name===stop.name) && sorted[i+1]?.name)next.add(sorted[i+1].name);});
   }
   if(next.size)return '다음 정류장: '+[...next].slice(0,2).join(' / ');
   return '방면 미확인';

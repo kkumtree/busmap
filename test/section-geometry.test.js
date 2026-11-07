@@ -56,3 +56,10 @@ test('multipart sections, provenance and failure diagnostics survive saved-plan 
 test('local anchor matching skips conflicting coordinates instead of guessing',()=>{
   assert.equal(sectionAnchors(f.stops,[...f.localStops,{...f.localStops[0],lon:f.localStops[0].lon+0.001}],f.route).length,5);
 });
+
+test('duplicate section vertices are safe only when their positions agree',()=>{
+  const duplicate=f.rows[0];
+  assert.equal(parseSection([...f.rows.slice(0,1),duplicate,...f.rows.slice(1)],f.from,f.to,f.route,options).status,'ready');
+  const rows=[duplicate,{...duplicate,vtxx:'127.12'},...f.rows.slice(1)];
+  assert.equal(parseSection(rows,f.from,f.to,f.route,options).diagnostics.reason,'conflicting-vertex');
+});

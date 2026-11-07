@@ -4,6 +4,19 @@ export default Object.freeze({
   id: 'jeonju',
   name: '전주',
   label: 'Jeonju',
+  // Public route IDs previously observed for these legs. Never offer a route
+  // based on a hint alone: the current stop sequence must confirm it.
+  routeHints: {
+    '30887:30920': [['305001119','61']],
+    '30927:30920': [['305001423','200']],
+    '30920:36347': [['305001089','101']],
+    '30920:36351': [['305001609','74'],['305001493','75']],
+  },
+  // Official stop list coordinates paired with IDs observed in both 74 and 75 sequences.
+  platforms: [
+    {number:'30920', standardId:'305100920', lat:35.834017, lon:127.111001},
+    {number:'36351', standardId:'305032417', lat:35.844878, lon:127.077473},
+  ],
   // 지도 초기 시점
   center: Object.freeze([127.135, 35.825]),
   zoom: 12.3,

@@ -31,3 +31,12 @@ test('corrupt saved data does not break startup or overwrite legacy journeys',()
   const storage=memory();storage.setItem('busmap.journeys.v1','legacy');storage.setItem(PLANS_KEY,'broken');assert.deepEqual(readPlans(storage),[]);
   writePlan(storage,example());assert.equal(storage.getItem('busmap.journeys.v1'),'legacy');
 });
+
+test('a direct trip survives reload and only boarding stops receive arrival requests',()=>{
+  const storage=memory(),p={...example(),mode:'direct',destinations:[]};
+  writePlan(storage,p);
+  const [saved]=readPlans(storage);
+  assert.equal(saved.mode,'direct');
+  assert.deepEqual(arrivalTargets(saved).map(t=>t.stop.number),['1','3']);
+  assert.throws(()=>validatePlan({...example(),mode:'direct'}));
+});
