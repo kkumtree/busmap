@@ -77,7 +77,7 @@ try{
     map.addSource('bus-stops',{type:'geojson',data:features(),cluster:true,clusterRadius:75,clusterMaxZoom:14});
     const stopVisibility=$('stop-picker').open?'visible':'none';
     map.addLayer({id:'stop-clusters',type:'circle',source:'bus-stops',filter:['has','point_count'],layout:{visibility:stopVisibility},paint:{'circle-color':'#fdfbf5','circle-stroke-color':'#79736a','circle-stroke-width':1.2,'circle-radius':['step',['get','point_count'],18,100,23,500,28]}});
-    map.addLayer({id:'stop-cluster-count',type:'symbol',source:'bus-stops',filter:['has','point_count'],layout:{visibility:stopVisibility,'text-field':['concat',['get','point_count_abbreviated'],'곳'],'text-font':['Noto Sans Regular'],'text-size':12},paint:{'text-color':'#26241f'}});
+    map.addLayer({id:'stop-cluster-count',type:'symbol',source:'bus-stops',filter:['has','point_count'],layout:{visibility:stopVisibility,'text-field':['to-string',['get','point_count_abbreviated']],'text-font':['Noto Sans Regular'],'text-size':12},paint:{'text-color':'#26241f'}});
     map.on('click','stop-clusters',async e=>{const feature=e.features?.[0];if(!feature)return;try{const zoom=await map.getSource('bus-stops').getClusterExpansionZoom(feature.properties.cluster_id);map.easeTo({center:feature.geometry.coordinates,zoom:Math.max(zoom,map.getZoom()+1)});}catch{tell('정류장 묶음을 확대하지 못했습니다. 지도 + 버튼을 이용하세요.');}});
     for(const layer of ['stop-clusters','stop-cluster-count']){map.on('mouseenter',layer,()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave',layer,()=>map.getCanvas().style.cursor='');}
     // 점 대신 테마에 맞춘 네모 버스 아이콘을 씽니다.
